@@ -4,7 +4,7 @@ from vllm.config import KVTransferConfig
 from vllm.distributed.kv_transfer.kv_pipe.pynccl_pipe import PyNcclPipe
 
 
-device = torch.device("cuda")
+device = torch.device("cuda:0")
 
 config = KVTransferConfig(
     kv_connector='PyNcclConnector',
