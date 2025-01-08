@@ -22,6 +22,13 @@ pipe = PyNcclPipe(
     config=config,
     device="cuda",
 )
+signal_pipe = PyNcclPipe(
+    local_rank=device.index,
+    config=config,
+    port_offset=1,
+    device="cpu",
+)
 
+name = signal_pipe.recv_tensor()
 tensor = pipe.recv_tensor()
-print("Received tensor with shape: {}".format(tensor.shape))
+print("Received tensor {} with shape: {}".format(bytes(name.numpy()).decode('u8'), tensor.shape))
