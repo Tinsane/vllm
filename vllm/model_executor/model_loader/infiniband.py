@@ -1,3 +1,4 @@
+import logging
 from typing import Tuple, Generator, Iterable
 
 import torch
@@ -43,6 +44,7 @@ class InfinibandModelLoader:
         )
 
         for name, tensor in stream:
+            logging.debug("Sending tensor: {}".format(name))
             self._send_tensor(signal_pipe, pipe, name, tensor)
             # self._send_tensor(signal_pipe, pipe, name, tensor.to(torch.device("cuda")))
 
@@ -79,6 +81,7 @@ class InfinibandModelLoader:
             if done.numpy()[0]:
                 break
             name = signal_pipe.recv_tensor()
+            logging.debug("Received tensor: {}".format(name))
             tensor = pipe.recv_tensor()
             yield bytes(name.numpy()).decode('u8'), tensor
 
