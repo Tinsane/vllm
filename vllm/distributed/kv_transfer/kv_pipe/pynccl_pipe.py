@@ -57,6 +57,7 @@ class PyNcclPipe(KVPipeBase):
         else:
             self.device = self._select_device(device)
 
+        logger.debug("Here: self.group = StatelessProcessGroup.create(")
         # build distributed connection and send/recv implementation
         self.group = StatelessProcessGroup.create(
             host=self.config.kv_ip,
@@ -64,8 +65,10 @@ class PyNcclPipe(KVPipeBase):
             rank=self.kv_rank,
             world_size=self.kv_parallel_size,
         )
+        logger.debug("Here: self.group.barrier()")
         # add a barrier to make sure the connection is initiated properly
         self.group.barrier()
+        logger.debug("Here: impl = self._get_device_send_recv_impl(self.group)")
         impl = self._get_device_send_recv_impl(self.group)
         self.device_send_func, self.device_recv_func = impl
         # set target rank
