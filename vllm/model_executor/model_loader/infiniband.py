@@ -30,7 +30,7 @@ class InfinibandModelLoader:
             kv_rank=0,
             kv_role="kv_both",  # this arg doesn't matter in this test
             kv_parallel_size=2,
-            kv_ip="192.168.0.28",
+            kv_ip="192.168.0.145",
             kv_port=29500,
         )
         logger.debug("Here: pipe = ")
@@ -66,7 +66,7 @@ class InfinibandModelLoader:
             kv_rank=1,
             kv_role="kv_both",  # this arg doesn't matter in this test
             kv_parallel_size=2,
-            kv_ip="192.168.0.28",
+            kv_ip="192.168.0.145",
             kv_port=29500,
         )
 
