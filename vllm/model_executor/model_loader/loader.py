@@ -184,10 +184,10 @@ class DefaultModelLoader(BaseModelLoader):
     def __init__(self, load_config: LoadConfig):
         super().__init__(load_config)
         self.ib_loader = InfinibandModelLoader()
-        if load_config.load_format == LoadFormat.IB:
-            self.rank = int(load_config.model_loader_extra_config["rank"])
-            if self.rank == 0:
-                pass
+        # if load_config.load_format == LoadFormat.IB:
+        #     self.rank = int(load_config.model_loader_extra_config["rank"])
+        #     if self.rank == 0:
+        #         pass
 
         # if load_config.model_loader_extra_config:
         #     raise ValueError(f"Model loader extra config is not supported for "
