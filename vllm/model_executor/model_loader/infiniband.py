@@ -20,6 +20,7 @@ class InfinibandModelLoader:
         signal_pipe.send_tensor(torch.ones((1,), device='cpu'))
 
     def send_stream(self, stream: Iterable[Tuple[str, torch.Tensor]]):
+        logging.debug("Starting sending tensors")
         config = KVTransferConfig(
             kv_connector='PyNcclConnector',
             kv_buffer_device='cuda',
@@ -53,6 +54,7 @@ class InfinibandModelLoader:
         pipe.close()
 
     def load_tensors(self) -> Generator[Tuple[str, torch.Tensor], None, None]:
+        logging.debug("Starting load tensors")
         config = KVTransferConfig(
             kv_connector='PyNcclConnector',
             kv_buffer_device='cuda',
