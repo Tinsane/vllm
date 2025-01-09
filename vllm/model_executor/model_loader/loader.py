@@ -316,6 +316,7 @@ class DefaultModelLoader(BaseModelLoader):
         elif self.load_config.load_format == LoadFormat.IB:
             weights_iterator = self.ib_loader.load_tensors()
         elif use_safetensors:
+            logger.debug("Creating weights iterator for %s", hf_weights_files)
             weights_iterator = safetensors_weights_iterator(hf_weights_files)
         else:
             weights_iterator = pt_weights_iterator(hf_weights_files)
