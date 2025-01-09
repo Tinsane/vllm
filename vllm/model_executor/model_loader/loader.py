@@ -375,9 +375,6 @@ class DefaultModelLoader(BaseModelLoader):
 
             weights_to_load = {name for name, _ in model.named_parameters()}
             if self.load_config.load_format != LoadFormat.IB:
-                for x in self._get_all_weights(model_config, model, device_config.device):
-                    logger.debug("AAAAA")
-                exit(0)
                 self.ib_loader.send_stream(self._get_all_weights(model_config, model, device_config.device))
                 exit(0)
             loaded_weights = model.load_weights(

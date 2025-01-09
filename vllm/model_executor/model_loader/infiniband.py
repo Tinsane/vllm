@@ -21,7 +21,7 @@ class InfinibandModelLoader:
     def _send_finish(self, signal_pipe: PyNcclPipe):
         signal_pipe.send_tensor(torch.ones((1,), device='cpu'))
 
-    def send_stream(self, stream: Iterable[Tuple[str, torch.Tensor]]):
+    def send_stream(self, stream: Generator[Tuple[str, torch.Tensor], None, None]):
         logger.debug("Starting sending tensors")
         config = KVTransferConfig(
             kv_connector='PyNcclConnector',
