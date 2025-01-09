@@ -33,12 +33,13 @@ class InfinibandModelLoader:
             kv_ip="192.168.0.28",
             kv_port=29500,
         )
-
+        logger.debug("Here: pipe = ")
         pipe = PyNcclPipe(
             local_rank=0,
             config=config,
             device="cuda",
         )
+        logger.debug("Here: signal_pipe = ")
         signal_pipe = PyNcclPipe(
             local_rank=0,
             config=config,
@@ -46,6 +47,7 @@ class InfinibandModelLoader:
             device="cpu",
         )
 
+        logger.debug("Here: for name, tensor in stream: ")
         for name, tensor in stream:
             logger.debug("Sending tensor: {}".format(name))
             self._send_tensor(signal_pipe, pipe, name, tensor)
