@@ -1,10 +1,12 @@
-import logging
 from typing import Tuple, Generator, Iterable
 
 import torch
 
 from vllm.config import KVTransferConfig
 from vllm.distributed.kv_transfer.kv_pipe.pynccl_pipe import PyNcclPipe
+from vllm.logger import init_logger
+
+logger = init_logger(__name__)
 
 
 class InfinibandModelLoader:
@@ -20,7 +22,7 @@ class InfinibandModelLoader:
         signal_pipe.send_tensor(torch.ones((1,), device='cpu'))
 
     def send_stream(self, stream: Iterable[Tuple[str, torch.Tensor]]):
-        logging.debug("Starting sending tensors")
+        logger.debug("Starting sending tensors")
         config = KVTransferConfig(
             kv_connector='PyNcclConnector',
             kv_buffer_device='cuda',
@@ -45,7 +47,7 @@ class InfinibandModelLoader:
         )
 
         for name, tensor in stream:
-            logging.debug("Sending tensor: {}".format(name))
+            logger.debug("Sending tensor: {}".format(name))
             self._send_tensor(signal_pipe, pipe, name, tensor)
             # self._send_tensor(signal_pipe, pipe, name, tensor.to(torch.device("cuda")))
 
@@ -54,7 +56,7 @@ class InfinibandModelLoader:
         pipe.close()
 
     def load_tensors(self) -> Generator[Tuple[str, torch.Tensor], None, None]:
-        logging.debug("Starting load tensors")
+        logger.debug("Starting load tensors")
         config = KVTransferConfig(
             kv_connector='PyNcclConnector',
             kv_buffer_device='cuda',
@@ -83,7 +85,7 @@ class InfinibandModelLoader:
             if done.numpy()[0]:
                 break
             name = signal_pipe.recv_tensor()
-            logging.debug("Received tensor: {}".format(name))
+            logger.debug("Received tensor: {}".format(name))
             tensor = pipe.recv_tensor()
             yield bytes(name.numpy()).decode('u8'), tensor
 
