@@ -35,6 +35,7 @@ from vllm.model_executor.layers.linear import (LinearBase,
                                                RowParallelLinear)
 from vllm.model_executor.layers.quantization.base_config import (
     QuantizeMethodBase)
+from vllm.model_executor.model_loader.infiniband import InfinibandModelLoader
 from vllm.model_executor.model_loader.tensorizer import (
     TensorizerConfig, is_vllm_tensorized, load_with_tensorizer,
     serialize_vllm_model, tensorizer_weights_iterator)
@@ -182,9 +183,15 @@ class DefaultModelLoader(BaseModelLoader):
 
     def __init__(self, load_config: LoadConfig):
         super().__init__(load_config)
-        if load_config.model_loader_extra_config:
-            raise ValueError(f"Model loader extra config is not supported for "
-                             f"load format {load_config.load_format}")
+        self.ib_loader = InfinibandModelLoader()
+        if load_config.load_format == LoadFormat.IB:
+            self.rank = int(load_config.model_loader_extra_config["rank"])
+            if self.rank == 0:
+                pass
+
+        # if load_config.model_loader_extra_config:
+        #     raise ValueError(f"Model loader extra config is not supported for "
+        #                      f"load format {load_config.load_format}")
 
     def _maybe_download_from_modelscope(
             self, model: str, revision: Optional[str]) -> Optional[str]:
@@ -292,7 +299,7 @@ class DefaultModelLoader(BaseModelLoader):
         return hf_folder, hf_weights_files, use_safetensors
 
     def _get_weights_iterator(
-            self, source: "Source"
+            self, source: "Source", device: torch.device
     ) -> Generator[Tuple[str, torch.Tensor], None, None]:
         """Get an iterator for the model weights based on the load format."""
         hf_folder, hf_weights_files, use_safetensors = self._prepare_weights(
@@ -306,6 +313,8 @@ class DefaultModelLoader(BaseModelLoader):
                 hf_folder,
                 hf_weights_files,
             )
+        elif self.load_config.load_format == LoadFormat.IB:
+            weights_iterator = self.ib_loader.load_tensors()
         elif use_safetensors:
             weights_iterator = safetensors_weights_iterator(hf_weights_files)
         else:
@@ -331,6 +340,7 @@ class DefaultModelLoader(BaseModelLoader):
         self,
         model_config: ModelConfig,
         model: nn.Module,
+        device: torch.device,
     ) -> Generator[Tuple[str, torch.Tensor], None, None]:
         primary_weights = DefaultModelLoader.Source(
             model_config.model,
@@ -339,14 +349,14 @@ class DefaultModelLoader(BaseModelLoader):
             fall_back_to_pt=getattr(model, "fall_back_to_pt_during_load",
                                     True),
         )
-        yield from self._get_weights_iterator(primary_weights)
+        yield from self._get_weights_iterator(primary_weights, device)
 
         secondary_weights = cast(
             Iterable[DefaultModelLoader.Source],
             getattr(model, "secondary_weights", ()),
         )
         for source in secondary_weights:
-            yield from self._get_weights_iterator(source)
+            yield from self._get_weights_iterator(source, device)
 
     def download_model(self, model_config: ModelConfig) -> None:
         self._prepare_weights(model_config.model,
@@ -363,8 +373,13 @@ class DefaultModelLoader(BaseModelLoader):
                 model = _initialize_model(vllm_config=vllm_config)
 
             weights_to_load = {name for name, _ in model.named_parameters()}
+            if self.load_config.load_format != LoadFormat.IB:
+                for name, param in self._get_all_weights(model_config, model, device_config.device):
+                    self.ib_loader.send_tensor(name, param)
+                self.ib_loader.send_finish()
+                exit(0)
             loaded_weights = model.load_weights(
-                self._get_all_weights(model_config, model))
+                self._get_all_weights(model_config, model, device_config.device))
             # We only enable strict check for non-quantized models
             # that have loaded weights tracking currently.
             if model_config.quantization is None and loaded_weights is not None:
