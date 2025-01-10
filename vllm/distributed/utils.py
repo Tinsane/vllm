@@ -214,6 +214,12 @@ class StatelessProcessGroup:
         C, and D can call `StatelessProcessGroup.create` to form another group.
         """ # noqa
         logger.debug("Here: store = TCPStore(")
+        logger.debug(f"""
+            host_name={host},
+            port={port},
+            world_size={world_size},
+            is_master=({rank} == 0),
+        """)
         store = TCPStore(
             host_name=host,
             port=port,
