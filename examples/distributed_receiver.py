@@ -3,7 +3,6 @@ import torch
 from vllm.config import KVTransferConfig
 from vllm.distributed.kv_transfer.kv_pipe.pynccl_pipe import PyNcclPipe
 
-
 device = torch.device("cuda:0")
 
 config = KVTransferConfig(
@@ -23,11 +22,22 @@ pipe = PyNcclPipe(
     device="cuda",
 )
 
-tensor, metadata = pipe.recv_tensor()
-name = metadata['name']
-check_sum = metadata['check_sum']
-real_sum = torch.sum(tensor, dtype=tensor.dtype).to(device="cpu")
-print(
-    f"Receiving tensor {bytes(name.numpy()).decode('u8')}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}, {real_sum.dtype}, {real_sum}")
-print("Check sum difference: {}".format(check_sum - real_sum))
+while True:
+    tensor, metadata = pipe.recv_tensor()
+
+    # Check if the sender has finished sending tensors
+    if 'finished' in metadata and metadata['finished'].item():
+        print("Receiver: Finished receiving tensors.")
+        break
+
+    name = metadata['name']
+    check_sum = metadata['check_sum']
+    real_sum = torch.sum(tensor, dtype=tensor.dtype).to(device="cpu")
+
+    print(
+        f"Receiving tensor {bytes(name.numpy()).decode('u8')}, {tensor.shape}, {tensor.dtype}, "
+        f"{check_sum.dtype}, {check_sum}, {real_sum.dtype}, {real_sum}"
+    )
+    print("Check sum difference: {}".format(check_sum - real_sum))
+
 pipe.close()
