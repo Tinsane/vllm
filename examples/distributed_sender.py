@@ -3,8 +3,6 @@ import torch
 from vllm.config import KVTransferConfig
 from vllm.distributed.kv_transfer.kv_pipe.pynccl_pipe import PyNcclPipe
 
-import re
-
 
 device = torch.device("cuda:0")
 
@@ -25,19 +23,18 @@ pipe = PyNcclPipe(
     device="cuda",
 )
 
-tensor_regex = re.compile(
-    r"(\S+), torch\.Size\((\[[\d, ]+\])\), (\S+)"
-)
 with open('distributed_sender.py', 'r') as f:
     lines = f.readlines()
 
 for line in lines:
-    match = tensor_regex.match(line.strip())
-    if not match:
-        continue
-    name = match.group(1)
-    shape = eval(match.group(2))  # Convert string to list
-    dtype = match.group(3)  # e.g., "torch.bfloat16"
+    line = line.strip()
+    if not line:
+        continue  # Skip empty lines
+
+    parts = line.split(", ")
+    name = parts[0]
+    shape = eval(parts[1].replace("torch.Size", ""))  # Convert to list
+    dtype = getattr(torch, parts[2])  # Convert string to torch dtype
 
     tensor = torch.randn(shape, dtype=dtype, device=device)
     check_sum = torch.sum(tensor, dtype=tensor.dtype).to(device="cpu")
