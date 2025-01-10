@@ -33,8 +33,8 @@ for line in lines:
 
     parts = line.split(", ")
     name = parts[0]
-    shape = eval(parts[1].replace("torch.Size", ""))  # Convert to list
-    dtype = getattr(torch, parts[2])  # Convert string to torch dtype
+    shape = eval(parts[1])
+    dtype = torch.bfloat16
 
     tensor = torch.randn(shape, dtype=dtype, device=device)
     check_sum = torch.sum(tensor, dtype=tensor.dtype).to(device="cpu")
