@@ -200,6 +200,7 @@ class PyNcclPipe(KVPipeBase):
         if metadata["dtype"] is None:
             return None
         buffer = self._prepare_recv_buffer(metadata)
+        torch.cuda.synchronize()
         self.device_recv_func(buffer, self.target_rank_for_recv)
         del metadata["dtype"]
         del metadata["shape"]
