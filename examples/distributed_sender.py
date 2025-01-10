@@ -42,7 +42,7 @@ for line in lines:
     dtype = torch.bfloat16
 
     tensor = torch.randn(shape, dtype=dtype, device=device)
-    check_sum = torch.sum(tensor.to(torch.float32)).to(device="cpu")
+    check_sum = torch.sum(tensor.to(torch.float64).to(device="cpu"))
     pipe.send_tensor(tensor, metadata={
         "finished": torch.zeros((1,), dtype=torch.bool, device='cpu'),
         "name": torch.tensor(list(name.encode('u8')), dtype=torch.uint8, device="cpu"),

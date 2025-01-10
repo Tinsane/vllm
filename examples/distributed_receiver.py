@@ -32,7 +32,7 @@ while True:
 
     name = metadata['name']
     check_sum = metadata['check_sum']
-    real_sum = torch.sum(tensor.to(torch.float32)).to(device="cpu")
+    real_sum = torch.sum(tensor.to(torch.float64).to(device="cpu"))
 
     print(
         f"Receiving tensor {bytes(name.numpy()).decode('u8')}, {tensor.shape}, {tensor.dtype}, "
