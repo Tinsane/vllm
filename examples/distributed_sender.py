@@ -25,14 +25,16 @@ pipe = PyNcclPipe(
     device="cuda",
 )
 
-with open('distributed_sender.py', 'r') as log:
-    log_data = log.read()
-
 tensor_regex = re.compile(
-    r"Sending tensor (\S+), torch\.Size\((\[[\d, ]+\])\), (\S+), (\S+), ([\d\.\-]+)"
+    r"(\S+), torch\.Size\((\[[\d, ]+\])\), (\S+)"
 )
+with open('distributed_sender.py', 'r') as f:
+    lines = f.readlines()
 
-for match in tensor_regex.finditer(log_data):
+for line in lines:
+    match = tensor_regex.match(line.strip())
+    if not match:
+        continue
     name = match.group(1)
     shape = eval(match.group(2))  # Convert string to list
     dtype = match.group(3)  # e.g., "torch.bfloat16"
