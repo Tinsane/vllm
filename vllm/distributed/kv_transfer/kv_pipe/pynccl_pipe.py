@@ -75,7 +75,7 @@ class PyNcclPipe(KVPipeBase):
         self.device_send_func, self.device_recv_func = impl
         # set target rank
         self.target_rank_for_send = (self.kv_rank + 1) % self.kv_parallel_size
-        self.target_rank_for_recv = (self.kv_rank - 1) % self.kv_parallel_size
+        self.target_rank_for_recv = (self.kv_rank + 1) % self.kv_parallel_size
 
         # transportation-related variables
         self.transport_thread: Optional[ThreadPoolExecutor] = None
