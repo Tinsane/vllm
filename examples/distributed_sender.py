@@ -26,7 +26,12 @@ pipe = PyNcclPipe(
 with open('distributed_log.txt', 'r') as f:
     lines = f.readlines()
 
+counter = 0
+
 for line in lines:
+    counter += 1
+    if counter > 4:
+        break
     line = line.strip()
     if not line:
         continue  # Skip empty lines
