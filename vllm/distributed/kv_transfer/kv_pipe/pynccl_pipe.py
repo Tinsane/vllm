@@ -195,14 +195,11 @@ class PyNcclPipe(KVPipeBase):
         Returns:
             - buffer: The received tensor, or None if no tensor is received.
         """
-        logger.debug("Receiving metadata")
         metadata = self._recv_metadata()
         logger.debug(f"Received metadata: {metadata}")
         if metadata["dtype"] is None:
             return None
         buffer = self._prepare_recv_buffer(metadata)
-        torch.cuda.synchronize()
-        logger.debug("Prepared buffer for receiving tensor")
         self.device_recv_func(buffer, self.target_rank_for_recv)
         del metadata["dtype"]
         del metadata["shape"]
