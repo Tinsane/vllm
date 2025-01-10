@@ -16,6 +16,7 @@ class InfinibandModelLoader:
     def _send_tensor(self, signal_pipe: PyNcclPipe, pipe: PyNcclPipe, name: str, tensor: torch.Tensor):
         signal_pipe.send_tensor(torch.zeros((1,), dtype=torch.bool, device='cpu'))
         signal_pipe.send_tensor(torch.tensor(list(name.encode('u8')), dtype=torch.uint8, device="cpu"))
+        signal_pipe.send_tensor(torch.sum(tensor, dtype=tensor.dtype).to(device="cpu"))
         pipe.send_tensor(tensor)
 
     def _send_finish(self, signal_pipe: PyNcclPipe):
@@ -89,9 +90,12 @@ class InfinibandModelLoader:
             if done.numpy()[0]:
                 break
             name_raw = signal_pipe.recv_tensor()
+            check_sum = signal_pipe.recv_tensor()
             name = bytes(name_raw.numpy()).decode('u8')
             logger.debug("Received tensor: {}".format(name))
             tensor = pipe.recv_tensor()
+            real_sum = torch.sum(tensor, dtype=tensor.dtype).to(device="cpu")
+            logger.debug("Check sum difference: {}".format(check_sum - real_sum))
             yield name, tensor
 
         logger.debug("Finished loading tensors")
