@@ -47,7 +47,8 @@ class PyNcclPipe(KVPipeBase):
                  local_rank: int,
                  config: KVTransferConfig,
                  device: Optional[str] = None,
-                 port_offset: int = 0):
+                 port_offset: int = 0,
+                 wait_for_workers: bool = True):
         self.config = config
         self.local_rank = local_rank
         self.kv_rank = self.config.kv_rank
@@ -64,6 +65,7 @@ class PyNcclPipe(KVPipeBase):
             port=self.config.kv_port + port_offset,
             rank=self.kv_rank,
             world_size=self.kv_parallel_size,
+            wait_for_workers=wait_for_workers,
         )
         logger.debug("Here: self.group.barrier()")
         # add a barrier to make sure the connection is initiated properly

@@ -38,6 +38,7 @@ class InfinibandModelLoader:
             local_rank=0,
             config=config,
             device="cuda",
+            wait_for_workers=False,
         )
         logger.debug("Here: signal_pipe = ")
         signal_pipe = PyNcclPipe(
@@ -45,6 +46,7 @@ class InfinibandModelLoader:
             config=config,
             port_offset=1,
             device="cpu",
+            wait_for_workers=False,
         )
 
         logger.debug("Here: for name, tensor in stream: ")

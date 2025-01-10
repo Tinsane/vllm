@@ -197,6 +197,7 @@ class StatelessProcessGroup:
         rank: int,
         world_size: int,
         data_expiration_seconds: int = 3600,
+        wait_for_workers: bool = True,
     ) -> "StatelessProcessGroup":
         """A replacement for `torch.distributed.init_process_group` that does not
         pollute the global state.
@@ -225,6 +226,7 @@ class StatelessProcessGroup:
             port=port,
             world_size=world_size,
             is_master=(rank == 0),
+            wait_for_workers=wait_for_workers,
         )
 
         logger.debug("Here: return StatelessProcessGroup(")
