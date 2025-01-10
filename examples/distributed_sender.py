@@ -33,3 +33,4 @@ pipe.send_tensor(tensor, metadata={
 })
 print(
     f"Sending tensor {tensor_name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}")
+pipe.close()
