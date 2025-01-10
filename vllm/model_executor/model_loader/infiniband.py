@@ -16,7 +16,9 @@ class InfinibandModelLoader:
     def _send_tensor(self, signal_pipe: PyNcclPipe, pipe: PyNcclPipe, name: str, tensor: torch.Tensor):
         signal_pipe.send_tensor(torch.zeros((1,), dtype=torch.bool, device='cpu'))
         signal_pipe.send_tensor(torch.tensor(list(name.encode('u8')), dtype=torch.uint8, device="cpu"))
-        signal_pipe.send_tensor(torch.sum(tensor, dtype=tensor.dtype).to(device="cpu"))
+        check_sum = torch.sum(tensor, dtype=tensor.dtype).to(device="cpu")
+        signal_pipe.send_tensor(check_sum)
+        logger.debug(f"Sending tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}")
         pipe.send_tensor(tensor)
 
     def _send_finish(self, signal_pipe: PyNcclPipe):
@@ -52,7 +54,6 @@ class InfinibandModelLoader:
 
         logger.debug("Here: for name, tensor in stream: ")
         for name, tensor in stream:
-            logger.debug("Sending tensor: {}".format(name))
             self._send_tensor(signal_pipe, pipe, name, tensor)
             # self._send_tensor(signal_pipe, pipe, name, tensor.to(torch.device("cuda")))
 
@@ -92,9 +93,9 @@ class InfinibandModelLoader:
             name_raw = signal_pipe.recv_tensor()
             check_sum = signal_pipe.recv_tensor()
             name = bytes(name_raw.numpy()).decode('u8')
-            logger.debug("Received tensor: {}".format(name))
             tensor = pipe.recv_tensor()
             real_sum = torch.sum(tensor, dtype=tensor.dtype).to(device="cpu")
+            logger.debug(f"Receiving tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}, {real_sum.dtype}, {real_sum}")
             logger.debug("Check sum difference: {}".format(check_sum - real_sum))
             yield name, tensor
 
