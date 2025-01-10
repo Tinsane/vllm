@@ -31,7 +31,7 @@ for line in lines:
     if not line:
         continue  # Skip empty lines
 
-    parts = line.split(", ")
+    parts = line.split(";")
     name = parts[0]
     shape = eval(parts[1])
     dtype = torch.bfloat16
