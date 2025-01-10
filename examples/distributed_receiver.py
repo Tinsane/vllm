@@ -33,7 +33,7 @@ while True:
     name = metadata['name']
     check_sum = metadata['check_sum']
     torch.cuda.synchronize()
-    real_sum = torch.sum(tensor.to(torch.float64).to(device="cpu"))
+    real_sum = torch.sum(tensor).to(device="cpu")
     torch.cuda.synchronize()
 
     print(
