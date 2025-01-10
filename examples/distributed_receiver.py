@@ -22,7 +22,7 @@ pipe = PyNcclPipe(
     device="cuda",
 )
 
-for T in range(10):
+for T in range(40):
     while True:
         tensor, metadata = pipe.recv_tensor()
 
