@@ -18,6 +18,8 @@ class InfinibandModelLoader:
         signal_pipe.send_tensor(torch.tensor(list(name.encode('u8')), dtype=torch.uint8, device="cpu"))
         check_sum = torch.sum(tensor, dtype=tensor.dtype).to(device="cpu")
         signal_pipe.send_tensor(check_sum)
+        pipe.group.barrier()
+        signal_pipe.group.barrier()
         logger.debug(f"Sending tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}")
         pipe.send_tensor(tensor)
 
@@ -95,6 +97,8 @@ class InfinibandModelLoader:
             name = bytes(name_raw.numpy()).decode('u8')
             tensor = pipe.recv_tensor()
             real_sum = torch.sum(tensor, dtype=tensor.dtype).to(device="cpu")
+            pipe.group.barrier()
+            signal_pipe.group.barrier()
             logger.debug(f"Receiving tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}, {real_sum.dtype}, {real_sum}")
             logger.debug("Check sum difference: {}".format(check_sum - real_sum))
             yield name, tensor
