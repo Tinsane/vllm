@@ -55,6 +55,8 @@ class InfinibandModelLoader:
             self._send_tensor(pipe, name, tensor.to(device="cuda"))
 
         self._send_finish(pipe)
+        torch.cuda.synchronize()
+        pipe.group.barrier()
         pipe.close()
 
     def load_tensors(self) -> Generator[Tuple[str, torch.Tensor], None, None]:
@@ -92,5 +94,6 @@ class InfinibandModelLoader:
             yield name, tensor
 
         logger.debug("Finished loading tensors")
+        pipe.group.barrier()
         pipe.close()
         logger.debug("Closed remote pipes")
