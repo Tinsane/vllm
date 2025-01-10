@@ -29,6 +29,6 @@ signal_pipe = PyNcclPipe(
     device="cpu",
 )
 
-name = signal_pipe.recv_tensor()
-tensor = pipe.recv_tensor()
+name, _ = signal_pipe.recv_tensor()
+tensor, metadata = pipe.recv_tensor()
 print("Received tensor {} with shape: {}".format(bytes(name.numpy()).decode('u8'), tensor.shape))
