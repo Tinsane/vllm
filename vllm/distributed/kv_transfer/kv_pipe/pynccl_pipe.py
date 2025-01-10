@@ -182,7 +182,9 @@ class PyNcclPipe(KVPipeBase):
             metadata = {**metadata, **extra_metadata}
         self._send_metadata(metadata)
         if tensor is not None:
-            self.device_send_func(tensor.to(self.device),
+            tensor = tensor.to(self.device)
+            torch.cuda.synchronize()
+            self.device_send_func(tensor,
                                   self.target_rank_for_send)
 
     def _recv_impl(self) -> Optional[Tuple[torch.Tensor, Metadata]]:
@@ -199,6 +201,7 @@ class PyNcclPipe(KVPipeBase):
         if metadata["dtype"] is None:
             return None
         buffer = self._prepare_recv_buffer(metadata)
+        torch.cuda.synchronize()
         logger.debug("Prepared buffer for receiving tensor")
         self.device_recv_func(buffer, self.target_rank_for_recv)
         del metadata["dtype"]
