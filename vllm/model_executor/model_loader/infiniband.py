@@ -88,10 +88,11 @@ class InfinibandModelLoader:
             done = signal_pipe.recv_tensor()
             if done.numpy()[0]:
                 break
-            name = signal_pipe.recv_tensor()
+            name_raw = signal_pipe.recv_tensor()
+            name = bytes(name_raw.numpy()).decode('u8')
             logger.debug("Received tensor: {}".format(name))
             tensor = pipe.recv_tensor()
-            yield bytes(name.numpy()).decode('u8'), tensor
+            yield name, tensor
 
         signal_pipe.close()
         pipe.close()
