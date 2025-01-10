@@ -25,7 +25,8 @@ class InfinibandModelLoader:
         })
 
     def _send_finish(self, pipe: PyNcclPipe):
-        pipe.send_tensor(torch.ones((1,), dtype=torch.bfloat16, device='cpu'), metadata={
+        torch.cuda.synchronize()
+        pipe.send_tensor(torch.ones((1,), dtype=torch.bfloat16, device="cuda"), metadata={
             "finished": torch.ones((1,), dtype=torch.bool, device='cpu'),
         })
 
