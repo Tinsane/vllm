@@ -14,15 +14,19 @@ class InfinibandModelLoader:
         pass
 
     def _send_tensor(self, pipe: PyNcclPipe, name: str, tensor: torch.Tensor):
-        torch.cuda.synchronize()
-        check_sum = torch.sum(tensor, dtype=tensor.dtype).to(device="cpu")
-        torch.cuda.synchronize()
-        logger.debug(f"Sending tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}")
-        pipe.send_tensor(tensor, metadata={
-            "finished": torch.zeros((1,), dtype=torch.bool, device='cpu'),
-            "name": torch.tensor(list(name.encode('u8')), dtype=torch.uint8, device="cpu"),
-            "check_sum": check_sum
-        })
+        while True:
+            torch.cuda.synchronize()
+            check_sum = torch.sum(tensor, dtype=tensor.dtype).to(device="cpu")
+            torch.cuda.synchronize()
+            logger.debug(f"Sending tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}")
+            pipe.send_tensor(tensor, metadata={
+                "finished": torch.zeros((1,), dtype=torch.bool, device='cpu'),
+                "name": torch.tensor(list(name.encode('u8')), dtype=torch.uint8, device="cpu"),
+                "check_sum": check_sum
+            })
+            meta = pipe.receive_metadata_only()
+            if meta["success"].numpy():
+                break
 
     def _send_finish(self, pipe: PyNcclPipe):
         torch.cuda.synchronize()
@@ -91,7 +95,15 @@ class InfinibandModelLoader:
             torch.cuda.synchronize()
             logger.debug(f"Receiving tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}, {real_sum.dtype}, {real_sum}")
             logger.debug("Check sum difference: {}".format(check_sum - real_sum))
-            yield name, tensor
+            if abs(check_sum - real_sum) < 1e-6:
+                pipe.send_metadata_only({
+                    'success': torch.ones((1,), dtype=torch.bool, device='cpu')
+                })
+                yield name, tensor
+            else:
+                pipe.send_metadata_only({
+                    'success': torch.zeros((1,), dtype=torch.bool, device='cpu')
+                })
 
         logger.debug("Finished loading tensors")
         pipe.group.barrier()

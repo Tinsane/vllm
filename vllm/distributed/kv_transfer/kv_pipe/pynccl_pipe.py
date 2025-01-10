@@ -207,6 +207,12 @@ class PyNcclPipe(KVPipeBase):
 
         return buffer, metadata
 
+    def send_metadata_only(self, metadata: Metadata) -> None:
+        self._send_metadata(metadata)
+
+    def receive_metadata_only(self) -> Metadata:
+        return self._recv_metadata()
+
     def send_tensor_wrapper(self, tensor: Optional[torch.Tensor],
                             tensor_size: int,
                             metadata: Optional[Metadata]) -> None:
