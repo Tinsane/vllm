@@ -199,7 +199,7 @@ class PyNcclPipe(KVPipeBase):
         if metadata["dtype"] is None:
             return None
         buffer = self._prepare_recv_buffer(metadata)
-        logger.debug("Prepared buffer for receiving metadata")
+        logger.debug("Prepared buffer for receiving tensor")
         self.device_recv_func(buffer, self.target_rank_for_recv)
         del metadata["dtype"]
         del metadata["shape"]
