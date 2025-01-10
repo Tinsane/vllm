@@ -22,7 +22,14 @@ pipe = PyNcclPipe(
     config=config,
     device="cuda",
 )
+signal_pipe = PyNcclPipe(
+    local_rank=device.index,
+    config=config,
+    port_offset=1,
+    device="cpu",
+)
 
+name1, _ = signal_pipe.recv_tensor()
 tensor, metadata = pipe.recv_tensor()
 name = metadata['name']
 check_sum = metadata['check_sum']
