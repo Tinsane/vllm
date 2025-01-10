@@ -145,7 +145,7 @@ class PyNcclPipe(KVPipeBase):
             - buffer: A tensor of the specified type and shape, allocated on 
               self.device.
         """
-        return torch.empty(metadata["shape"],
+        return torch.zeros(metadata["shape"],
                            dtype=metadata["dtype"],
                            device=self.device)
 
@@ -253,10 +253,6 @@ class PyNcclPipe(KVPipeBase):
 
         with self.buffer_size_lock:
             self.buffer_size += tensor_size
-
-        # TODO : remove this ugly hack
-        # It's necessary to test that sending in a serializable manner fixes race condition when sending weights over GPU
-        # self.send_tensor_wrapper(tensor, tensor_size, metadata)
 
         self.transport_thread.submit(self.send_tensor_wrapper, tensor,
                                      tensor_size, metadata)
