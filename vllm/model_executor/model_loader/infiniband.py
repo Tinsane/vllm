@@ -1,4 +1,4 @@
-from typing import Tuple, Generator, Iterable
+from typing import Tuple, Generator
 
 import torch
 
@@ -50,6 +50,7 @@ class InfinibandModelLoader:
         logger.debug("Here: for name, tensor in stream: ")
         for name, tensor in stream:
             self._send_tensor(pipe, name, tensor)
+            pipe.group.barrier()
             # self._send_tensor(signal_pipe, pipe, name, tensor.to(torch.device("cuda")))
 
         self._send_finish(pipe)
@@ -86,6 +87,7 @@ class InfinibandModelLoader:
             logger.debug(f"Receiving tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}, {real_sum.dtype}, {real_sum}")
             logger.debug("Check sum difference: {}".format(check_sum - real_sum))
             yield name, tensor
+            pipe.group.barrier()
 
         logger.debug("Finished loading tensors")
         pipe.close()
