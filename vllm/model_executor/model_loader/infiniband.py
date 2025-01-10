@@ -76,7 +76,7 @@ class InfinibandModelLoader:
         )
         while True:
             tensor, metadata = pipe.recv_tensor()
-            done = metadata['done']
+            done = metadata['finished']
             if done.numpy()[0]:
                 break
             name_raw = metadata['name']
