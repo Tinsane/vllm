@@ -145,10 +145,9 @@ class PyNcclPipe(KVPipeBase):
             - buffer: A tensor of the specified type and shape, allocated on 
               self.device.
         """
-        buffer = torch.empty(metadata["shape"],
-                             dtype=metadata["dtype"],
-                             device=self.device)
-        return buffer.view(buffer.numel())
+        return torch.empty(metadata["shape"],
+                           dtype=metadata["dtype"],
+                           device=self.device)
 
     def _send_metadata(self, metadata: Metadata):
         """
@@ -183,7 +182,7 @@ class PyNcclPipe(KVPipeBase):
             metadata = {**metadata, **extra_metadata}
         self._send_metadata(metadata)
         if tensor is not None:
-            self.device_send_func(tensor.view(tensor.numel()).to(self.device),
+            self.device_send_func(tensor.to(self.device),
                                   self.target_rank_for_send)
 
     def _recv_impl(self) -> Optional[Tuple[torch.Tensor, Metadata]]:
@@ -194,12 +193,13 @@ class PyNcclPipe(KVPipeBase):
         Returns:
             - buffer: The received tensor, or None if no tensor is received.
         """
+        logger.debug("Receiving metadata")
         metadata = self._recv_metadata()
+        logger.debug(f"Received metadata: {metadata}")
         if metadata["dtype"] is None:
             return None
         buffer = self._prepare_recv_buffer(metadata)
         self.device_recv_func(buffer, self.target_rank_for_recv)
-        buffer = buffer.view(metadata["shape"])
         del metadata["dtype"]
         del metadata["shape"]
 
