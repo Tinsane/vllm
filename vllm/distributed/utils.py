@@ -213,6 +213,7 @@ class StatelessProcessGroup:
         can call `StatelessProcessGroup.create` to form a group, and then process A, B,
         C, and D can call `StatelessProcessGroup.create` to form another group.
         """ # noqa
+        logger.debug("Here: store = TCPStore(")
         store = TCPStore(
             host_name=host,
             port=port,
@@ -220,6 +221,7 @@ class StatelessProcessGroup:
             is_master=(rank == 0),
         )
 
+        logger.debug("Here: return StatelessProcessGroup(")
         return StatelessProcessGroup(
             rank=rank,
             world_size=world_size,
