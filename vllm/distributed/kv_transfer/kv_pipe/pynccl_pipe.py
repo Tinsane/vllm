@@ -252,10 +252,10 @@ class PyNcclPipe(KVPipeBase):
 
         # TODO : remove this ugly hack
         # It's necessary to test that sending in a serializable manner fixes race condition when sending weights over GPU
-        # self.send_tensor_wrapper(tensor, tensor_size)
+        self.send_tensor_wrapper(tensor, tensor_size, metadata)
 
-        self.transport_thread.submit(self.send_tensor_wrapper, tensor,
-                                     tensor_size, metadata)
+        # self.transport_thread.submit(self.send_tensor_wrapper, tensor,
+        #                              tensor_size, metadata)
 
     def recv_tensor(self) -> Optional[Tuple[torch.Tensor, Metadata]]:
         """
