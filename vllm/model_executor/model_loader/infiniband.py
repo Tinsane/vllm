@@ -14,12 +14,12 @@ class InfinibandModelLoader:
         pass
 
     def _send_tensor(self, signal_pipe: PyNcclPipe, pipe: PyNcclPipe, name: str, tensor: torch.Tensor):
-        signal_pipe.send_tensor(torch.zeros((1,), device='cpu'))
+        signal_pipe.send_tensor(torch.zeros((1,), dtype=torch.bool, device='cpu'))
         signal_pipe.send_tensor(torch.tensor(list(name.encode('u8')), dtype=torch.uint8, device="cpu"))
         pipe.send_tensor(tensor)
 
     def _send_finish(self, signal_pipe: PyNcclPipe):
-        signal_pipe.send_tensor(torch.ones((1,), device='cpu'))
+        signal_pipe.send_tensor(torch.ones((1,), dtype=torch.bool, device='cpu'))
 
     def send_stream(self, stream: Generator[Tuple[str, torch.Tensor], None, None]):
         logger.debug("Starting sending tensors")
