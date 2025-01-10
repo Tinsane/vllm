@@ -163,7 +163,7 @@ class PyNcclPipe(KVPipeBase):
         """
         return self.group.recv_obj(self.target_rank_for_recv)
 
-    def _send_impl(self, tensor: Optional[torch.Tensor]) -> None:
+    def _send_impl(self, tensor: Optional[torch.Tensor], extra_metadata: Optional[Metadata]) -> None:
         """
         The actual implementation of sending the tensor and its metadata to the 
         target rank.
@@ -173,12 +173,14 @@ class PyNcclPipe(KVPipeBase):
               being sent.
         """
         metadata = self._make_metadata(tensor)
+        if extra_metadata is not None:
+            metadata.update(extra_metadata)
         self._send_metadata(metadata)
         if tensor is not None:
             self.device_send_func(tensor.to(self.device),
                                   self.target_rank_for_send)
 
-    def _recv_impl(self) -> Optional[torch.Tensor]:
+    def _recv_impl(self) -> Optional[Tuple[torch.Tensor, Metadata]]:
         """
         The actual implementation of receiving a tensor and its metadata from 
         the target rank.
@@ -191,16 +193,18 @@ class PyNcclPipe(KVPipeBase):
             return None
         buffer = self._prepare_recv_buffer(metadata)
         self.device_recv_func(buffer, self.target_rank_for_recv)
+        del metadata["dtype"]
+        del metadata["shape"]
 
-        return buffer
+        return buffer, metadata
 
     def send_tensor_wrapper(self, tensor: Optional[torch.Tensor],
-                            tensor_size: int) -> None:
+                            tensor_size: int, metadata: Optional[Metadata]) -> None:
         """
         Wrapper for _send_impl to handle exceptions and update buffer size.
         """
         try:
-            self._send_impl(tensor)
+            self._send_impl(tensor, metadata)
 
             with self.buffer_size_lock:
                 self.buffer_size -= tensor_size
@@ -219,7 +223,7 @@ class PyNcclPipe(KVPipeBase):
             logger.debug("KV cache transfer pipe is full. Waiting...")
             time.sleep(0.05)
 
-    def send_tensor(self, tensor: Optional[torch.Tensor]) -> None:
+    def send_tensor(self, tensor: Optional[torch.Tensor], metadata: Optional[Metadata] = None) -> None:
         """
         Sends a tensor and its metadata to the destination rank in a 
         non-blocking way.
@@ -241,9 +245,9 @@ class PyNcclPipe(KVPipeBase):
             self.buffer_size += tensor_size
 
         self.transport_thread.submit(self.send_tensor_wrapper, tensor,
-                                     tensor_size)
+                                     tensor_size, metadata)
 
-    def recv_tensor(self) -> Optional[torch.Tensor]:
+    def recv_tensor(self) -> Optional[Tuple[torch.Tensor, Metadata]]:
         """
         Receives a tensor and its metadata from the source rank. Blocking call.
 
@@ -256,7 +260,7 @@ class PyNcclPipe(KVPipeBase):
         future = self.transport_thread.submit(self._recv_impl)
 
         try:
-            tensor = future.result()
+            tensor, metadata = future.result()
         except Exception as e:
             logger.error("Encountering exception in KV receiving thread")
             logger.error("%s", e)
@@ -265,7 +269,7 @@ class PyNcclPipe(KVPipeBase):
             traceback.print_exc()
             raise e
 
-        return tensor
+        return tensor, metadata
 
     def close(self):
         """
