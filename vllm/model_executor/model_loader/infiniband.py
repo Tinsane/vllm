@@ -94,5 +94,7 @@ class InfinibandModelLoader:
             tensor = pipe.recv_tensor()
             yield name, tensor
 
+        logger.debug("Finished loading tensors")
         signal_pipe.close()
         pipe.close()
+        logger.debug("Closed remote pipes")

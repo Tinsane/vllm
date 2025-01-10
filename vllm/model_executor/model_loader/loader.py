@@ -316,8 +316,10 @@ class DefaultModelLoader(BaseModelLoader):
         elif self.load_config.load_format == LoadFormat.IB:
             weights_iterator = self.ib_loader.load_tensors()
         elif use_safetensors:
-            logger.debug("Creating weights iterator for %s", hf_weights_files)
             weights_iterator = safetensors_weights_iterator(hf_weights_files)
+            # TODO : doesn't work with secondary_weights
+            self.ib_loader.send_stream(weights_iterator)
+            exit(0)
         else:
             weights_iterator = pt_weights_iterator(hf_weights_files)
 
@@ -374,9 +376,6 @@ class DefaultModelLoader(BaseModelLoader):
                 model = _initialize_model(vllm_config=vllm_config)
 
             weights_to_load = {name for name, _ in model.named_parameters()}
-            if self.load_config.load_format != LoadFormat.IB:
-                self.ib_loader.send_stream(self._get_all_weights(model_config, model, device_config.device))
-                exit(0)
             loaded_weights = model.load_weights(
                 self._get_all_weights(model_config, model, device_config.device))
             # We only enable strict check for non-quantized models
