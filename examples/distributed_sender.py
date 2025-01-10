@@ -23,7 +23,7 @@ pipe = PyNcclPipe(
     device="cuda",
 )
 
-with open('distributed_sender.py', 'r') as f:
+with open('distributed_log.txt', 'r') as f:
     lines = f.readlines()
 
 for line in lines:
