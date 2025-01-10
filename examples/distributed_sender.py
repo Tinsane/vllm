@@ -41,8 +41,11 @@ for line in lines:
     shape = eval(parts[1])
     dtype = torch.bfloat16
 
+    torch.cuda.synchronize()
     tensor = torch.randn(shape, dtype=dtype, device=device)
+    torch.cuda.synchronize()
     check_sum = torch.sum(tensor.to(torch.float64).to(device="cpu"))
+    torch.cuda.synchronize()
     pipe.send_tensor(tensor, metadata={
         "finished": torch.zeros((1,), dtype=torch.bool, device='cpu'),
         "name": torch.tensor(list(name.encode('u8')), dtype=torch.uint8, device="cpu"),
