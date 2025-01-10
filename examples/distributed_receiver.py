@@ -22,13 +22,11 @@ pipe = PyNcclPipe(
     config=config,
     device="cuda",
 )
-signal_pipe = PyNcclPipe(
-    local_rank=device.index,
-    config=config,
-    port_offset=1,
-    device="cpu",
-)
 
-name = signal_pipe.recv_tensor()
-tensor = pipe.recv_tensor()
-print("Received tensor {} with shape: {}".format(bytes(name.numpy()).decode('u8'), tensor.shape))
+tensor, metadata = pipe.recv_tensor()
+name = metadata['name']
+check_sum = metadata['check_sum']
+real_sum = torch.sum(tensor, dtype=tensor.dtype).to(device="cpu")
+print(
+    f"Receiving tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}, {real_sum.dtype}, {real_sum}")
+print("Check sum difference: {}".format(check_sum - real_sum))
