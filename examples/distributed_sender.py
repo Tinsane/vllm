@@ -26,8 +26,10 @@ pipe = PyNcclPipe(
 tensor_name = "kekw"
 name_bytes = tensor_name.encode('u8')
 tensor = torch.randn(131072, 131072, device=device)
+check_sum = torch.sum(tensor, dtype=tensor.dtype).to(device="cpu")
 pipe.send_tensor(tensor, metadata={
     "name": torch.tensor(list(name_bytes), dtype=torch.uint8, device="cpu"),
-    "check_sum": torch.sum(tensor, dtype=tensor.dtype).to(device="cpu"),
+    "check_sum": check_sum,
 })
-print("Sent tensor with shape: {}".format(tensor.shape))
+print(
+    f"Sending tensor {tensor_name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}")
