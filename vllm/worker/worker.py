@@ -444,8 +444,8 @@ class Worker(LocalOrDistributedWorkerBase):
                                                 self.model_config,
                                                 self.parallel_config)
 
-    def perform_infiniband_load(self) -> None:
-        return self.model_runner.perform_infiniband_load()
+    def replicate_model(self, dst_ip: str, dst_port: int) -> None:
+        return self.model_runner.replicate_model(dst_ip, dst_port)
 
 
 def init_worker_distributed_environment(

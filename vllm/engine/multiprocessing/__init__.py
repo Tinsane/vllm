@@ -116,8 +116,9 @@ class RPCStartupResponse:
 
 
 @dataclass
-class RPCInfinibandLoadRequest:
-    pass
+class RPCReplicateModelRequest:
+    dst_ip: str
+    dst_port: int
 
 
 class RPCUProfileRequest(Enum):
@@ -126,7 +127,7 @@ class RPCUProfileRequest(Enum):
 
 
 RPC_REQUEST_T = Union[RPCProcessRequest, RPCAbortRequest, RPCStartupRequest,
-                      RPCUProfileRequest, RPCInfinibandLoadRequest]
+                      RPCUProfileRequest, RPCReplicateModelRequest]
 
 REQUEST_OUTPUTS_T = Union[List[RequestOutput], RPCError]
 

@@ -127,8 +127,8 @@ class GPUExecutor(ExecutorBase):
         # it's running.
         return
 
-    def perform_infiniband_load(self) -> None:
-        self.driver_worker.perform_infiniband_load()
+    def replicate_model(self, dst_ip: str, dst_port: int) -> None:
+        self.driver_worker.replicate_model(dst_ip, dst_port)
 
     def start_profile(self) -> None:
         self.driver_worker.start_profile()

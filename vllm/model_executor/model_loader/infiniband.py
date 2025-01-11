@@ -1,5 +1,6 @@
 from typing import Tuple, Generator
 
+import requests
 import torch
 
 from vllm.config import KVTransferConfig
@@ -27,7 +28,7 @@ class InfinibandModelLoader:
             if meta["success"].numpy():
                 break
 
-    def send_stream(self, stream: Generator[Tuple[str, torch.Tensor], None, None]):
+    def send_stream(self, dst_ip: str, dst_port: int, stream: Generator[Tuple[str, torch.Tensor], None, None]):
         logger.debug("Starting sending tensors")
         config = KVTransferConfig(
             kv_connector='PyNcclConnector',
@@ -36,15 +37,14 @@ class InfinibandModelLoader:
             kv_rank=1,
             kv_role="kv_both",  # this arg doesn't matter in this test
             kv_parallel_size=2,
-            kv_ip="89.169.100.78",
-            kv_port=29503,
+            kv_ip=dst_ip,
+            kv_port=dst_port,
         )
         logger.debug("Here: pipe = ")
         pipe = PyNcclPipe(
             local_rank=0,
             config=config,
             device="cuda",
-            # wait_for_workers=False,
         )
 
         logger.debug("Here: for name, tensor in stream: ")
@@ -67,6 +67,11 @@ class InfinibandModelLoader:
             kv_ip="89.169.100.78",
             kv_port=29503,
         )
+        requests.post('http://192.168.0.28:8000/infiniband_load',
+                      json={
+                          "dst_ip": "89.169.100.78",
+                          "dst_port": 29503,
+                      })
 
         pipe = PyNcclPipe(
             local_rank=0,
@@ -102,8 +107,9 @@ class InfinibandModelLoader:
         pipe.close()
         logger.debug("Closed remote pipes")
 
-    def send_model_weights(self, model: torch.nn.Module):
-        self.send_stream(((name, param)
+    def send_model_weights(self, dst_ip: str, dst_port: int, model: torch.nn.Module):
+        self.send_stream(dst_ip, dst_port,
+                         ((name, param)
                           for name, param in model.state_dict().items()
                           if torch.is_floating_point(param)))
 

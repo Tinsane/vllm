@@ -272,6 +272,6 @@ class EngineClient(ABC):
         ...
 
     @abstractmethod
-    async def infiniband_load(self) -> None:
+    async def replicate_model(self) -> None:
         """Sends model weights over infiniband to different vLLM instance"""
         ...

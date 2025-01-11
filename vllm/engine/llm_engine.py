@@ -2030,11 +2030,12 @@ class LLMEngine:
 
         return sampling_params
 
-    def perform_infiniband_load(self) -> None:
+    def replicate_model(self, dst_ip: str, dst_port: int) -> None:
         """Transfer model weights by inifiband to another vLLM instance
 
         Args:
-            TODO
+            dst_ip: str, destination ip address where model weights should be replicated
+            dst_port: int, destination port where model weights should be replicated
 
         Details:
             TODO
@@ -2045,8 +2046,6 @@ class LLMEngine:
         Example:
             TODO
             >>> # initialize engine and add a request with request_id
-            >>> request_id = str(0)
-            >>> # abort the request
-            >>> engine.perform_infiniband_load(request_id)
+            >>> engine.replicate_model("127.0.0.2", "29500")
         """
-        self.model_executor.perform_infiniband_load()
+        self.model_executor.replicate_model(dst_ip, dst_port)

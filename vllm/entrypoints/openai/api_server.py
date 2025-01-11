@@ -53,7 +53,7 @@ from vllm.entrypoints.openai.protocol import (ChatCompletionRequest,
                                               ScoreRequest, ScoreResponse,
                                               TokenizeRequest,
                                               TokenizeResponse,
-                                              UnloadLoraAdapterRequest)
+                                              UnloadLoraAdapterRequest, ModelReplicationRequest)
 # yapf: enable
 from vllm.entrypoints.openai.serving_chat import OpenAIServingChat
 from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion
@@ -316,9 +316,9 @@ async def health(raw_request: Request) -> Response:
 
 
 @router.post("/infiniband_load")
-async def infiniband_load(raw_request: Request) -> Response:
+async def infiniband_load(request: ModelReplicationRequest, raw_request: Request) -> Response:
     """Health check."""
-    await engine_client(raw_request).infiniband_load()
+    await engine_client(raw_request).replicate_model(request)
     return Response(status_code=200)
 
 

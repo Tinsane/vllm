@@ -27,8 +27,9 @@ from vllm.engine.multiprocessing import (ENGINE_DEAD_ERROR, IPC_DATA_EXT,
                                          VLLM_RPC_SUCCESS_STR, RPCAbortRequest,
                                          RPCError, RPCProcessRequest,
                                          RPCStartupRequest, RPCStartupResponse,
-                                         RPCUProfileRequest, RPCInfinibandLoadRequest)
+                                         RPCUProfileRequest, RPCReplicateModelRequest)
 from vllm.engine.protocol import EngineClient
+from vllm.entrypoints.openai.protocol import ModelReplicationRequest
 # yapf: enable
 from vllm.envs import VLLM_RPC_TIMEOUT
 from vllm.inputs import PromptType
@@ -660,8 +661,11 @@ class MQLLMEngineClient(EngineClient):
         await self._send_one_way_rpc_request(
             request=RPCUProfileRequest.STOP_PROFILE, socket=self.input_socket)
 
-    async def infiniband_load(self) -> None:
+    async def replicate_model(self, request: ModelReplicationRequest) -> None:
         """Sends model weights over infiniband to different vLLM instance"""
 
         await self._send_one_way_rpc_request(
-            request=RPCInfinibandLoadRequest(), socket=self.input_socket)
+            request=RPCReplicateModelRequest(
+                dst_ip=request.dst_ip,
+                dst_port=request.dst_port,
+            ), socket=self.input_socket)

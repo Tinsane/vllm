@@ -107,7 +107,7 @@ class ExecutorBase(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def perform_infiniband_load(self) -> None:
+    def replicate_model(self, dst_ip: str, dst_port: int) -> None:
         raise NotImplementedError
 
     @abstractmethod
