@@ -33,10 +33,10 @@ class InfinibandModelLoader:
             kv_connector='PyNcclConnector',
             kv_buffer_device='cuda',
             kv_buffer_size=1e9,
-            kv_rank=0,
+            kv_rank=1,
             kv_role="kv_both",  # this arg doesn't matter in this test
             kv_parallel_size=2,
-            kv_ip="192.168.0.145",
+            kv_ip="89.169.100.78",
             kv_port=29503,
         )
         logger.debug("Here: pipe = ")
@@ -44,7 +44,7 @@ class InfinibandModelLoader:
             local_rank=0,
             config=config,
             device="cuda",
-            wait_for_workers=False,
+            # wait_for_workers=False,
         )
 
         logger.debug("Here: for name, tensor in stream: ")
@@ -61,10 +61,10 @@ class InfinibandModelLoader:
             kv_connector='PyNcclConnector',
             kv_buffer_device='cuda',
             kv_buffer_size=1e9,
-            kv_rank=1,
+            kv_rank=0,
             kv_role="kv_both",  # this arg doesn't matter in this test
             kv_parallel_size=2,
-            kv_ip="192.168.0.145",
+            kv_ip="89.169.100.78",
             kv_port=29503,
         )
 
