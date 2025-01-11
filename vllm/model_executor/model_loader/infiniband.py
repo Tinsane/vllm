@@ -27,12 +27,6 @@ class InfinibandModelLoader:
             if meta["success"].numpy():
                 break
 
-    def _send_finish(self, pipe: PyNcclPipe):
-        torch.cuda.synchronize()
-        pipe.send_tensor(torch.ones((1,), dtype=torch.bfloat16, device="cuda"), metadata={
-            "finished": torch.ones((1,), dtype=torch.bool, device='cpu'),
-        })
-
     def send_stream(self, stream: Generator[Tuple[str, torch.Tensor], None, None]):
         logger.debug("Starting sending tensors")
         config = KVTransferConfig(
@@ -57,8 +51,7 @@ class InfinibandModelLoader:
         for name, tensor in stream:
             self._send_tensor(pipe, name, tensor.to(device="cuda"))
 
-        self._send_finish(pipe)
-        torch.cuda.synchronize()
+        pipe.send_metadata_only({"finished": torch.ones((1,), dtype=torch.bool, device='cpu')})
         pipe.group.barrier()
         pipe.close()
 

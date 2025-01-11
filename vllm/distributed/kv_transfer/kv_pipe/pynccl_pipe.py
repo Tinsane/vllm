@@ -199,7 +199,7 @@ class PyNcclPipe(KVPipeBase):
         """
         metadata = self._recv_metadata()
         logger.debug(f"Received metadata: {metadata}")
-        if metadata["dtype"] is None:
+        if 'dtype' not in metadata or metadata["dtype"] is None:
             return None
         buffer = self._prepare_recv_buffer(metadata)
         torch.cuda.synchronize()
