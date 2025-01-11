@@ -11,8 +11,8 @@ logger = init_logger(__name__)
 
 
 class InfinibandModelLoader:
-    def __init__(self):
-        pass
+    def __init__(self, rank: int):
+        self._rank = rank
 
     def _send_tensor(self, pipe: PyNcclPipe, name: str, tensor: torch.Tensor):
         while True:
@@ -42,14 +42,15 @@ class InfinibandModelLoader:
         )
         logger.debug("Here: pipe = ")
         pipe = PyNcclPipe(
-            local_rank=0,
+            local_rank=self._rank,
             config=config,
             device="cuda",
+            port_offset=self._rank,
         )
 
         logger.debug("Here: for name, tensor in stream: ")
         for name, tensor in stream:
-            self._send_tensor(pipe, name, tensor.to(device="cuda"))
+            self._send_tensor(pipe, name, tensor)
 
         pipe.send_metadata_only({"finished": torch.ones((1,), dtype=torch.bool, device='cpu')})
         pipe.group.barrier()
@@ -67,6 +68,7 @@ class InfinibandModelLoader:
             kv_ip="89.169.100.78",
             kv_port=29503,
         )
+        # TODO : potential race condition with sender PyNcclPipe->TCPStore init :(
         requests.post('http://192.168.0.28:8000/infiniband_load',
                       json={
                           "dst_ip": "89.169.100.78",
@@ -74,9 +76,9 @@ class InfinibandModelLoader:
                       })
 
         pipe = PyNcclPipe(
-            local_rank=0,
+            local_rank=self._rank,
             config=config,
-            # TODO : pass actual device
+            port_offset=self._rank
             # device=device,
         )
         while True:
@@ -115,7 +117,6 @@ class InfinibandModelLoader:
 
     def fetch_model_weights(self, model: torch.nn.Module):
         state = model.state_dict()
-        # TODO : pass device
         for name, tensor in self.load_tensors():
             assert (name in state), f"Unexpected tensor {name}"
             param = state[name]

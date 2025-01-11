@@ -428,9 +428,9 @@ class DummyModelLoader(BaseModelLoader):
 class IBModelLoader(BaseModelLoader):
     """Model loader that will set model weights to random values."""
 
-    def __init__(self, load_config: LoadConfig):
+    def __init__(self, load_config: LoadConfig, rank: int):
         super().__init__(load_config)
-        self.ib_loader = InfinibandModelLoader()
+        self.ib_loader = InfinibandModelLoader(rank)
         if load_config.model_loader_extra_config:
             raise ValueError(f"Model loader extra config is not supported for "
                              f"load format {load_config.load_format}")
@@ -1375,7 +1375,7 @@ class RunaiModelStreamerLoader(BaseModelLoader):
         return model.eval()
 
 
-def get_model_loader(load_config: LoadConfig) -> BaseModelLoader:
+def get_model_loader(load_config: LoadConfig, rank: int = 0) -> BaseModelLoader:
     """Get a model loader based on the load format."""
 
     if isinstance(load_config.load_format, type):
@@ -1385,7 +1385,7 @@ def get_model_loader(load_config: LoadConfig) -> BaseModelLoader:
         return DummyModelLoader(load_config)
 
     if load_config.load_format == LoadFormat.IB:
-        return IBModelLoader(load_config)
+        return IBModelLoader(load_config, rank)
 
     if load_config.load_format == LoadFormat.TENSORIZER:
         return TensorizerLoader(load_config)

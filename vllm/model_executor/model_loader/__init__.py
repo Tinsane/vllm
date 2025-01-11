@@ -8,7 +8,7 @@ from vllm.model_executor.model_loader.utils import (
 
 
 def get_model(*, vllm_config: VllmConfig) -> nn.Module:
-    loader = get_model_loader(vllm_config.load_config)
+    loader = get_model_loader(vllm_config.load_config, vllm_config.parallel_config.rank)
     return loader.load_model(vllm_config=vllm_config)
 
 

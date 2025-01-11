@@ -445,7 +445,7 @@ class Worker(LocalOrDistributedWorkerBase):
                                                 self.parallel_config)
 
     def replicate_model(self, dst_ip: str, dst_port: int) -> None:
-        return self.model_runner.replicate_model(dst_ip, dst_port)
+        return self.model_runner.replicate_model(dst_ip, dst_port, self.rank)
 
 
 def init_worker_distributed_environment(

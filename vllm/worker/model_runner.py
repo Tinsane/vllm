@@ -1560,9 +1560,9 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
     def vocab_size(self) -> int:
         return self.model_config.get_vocab_size()
 
-    def replicate_model(self, dst_ip: str, dst_port: int) -> None:
+    def replicate_model(self, dst_ip: str, dst_port: int, rank: int) -> None:
         assert self._loaded_model, "Attempting infiniband copying of not loaded model"
-        infiniband_loader = InfinibandModelLoader()
+        infiniband_loader = InfinibandModelLoader(rank)
         infiniband_loader.send_model_weights(dst_ip, dst_port, self.model)
 
 
