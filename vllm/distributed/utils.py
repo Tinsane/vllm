@@ -127,6 +127,7 @@ class StatelessProcessGroup:
         """Send an object to a destination rank."""
         self.expire_data()
         key = f"send_to/{dst}/{self.send_dst_counter[dst]}"
+        logger.debug(f"Sending {obj} to {dst} via path: {key}")
         self.store.set(key, pickle.dumps(obj))
         self.send_dst_counter[dst] += 1
         self.entries.append((key, time.time()))
@@ -144,9 +145,9 @@ class StatelessProcessGroup:
 
     def recv_obj(self, src: int) -> Any:
         """Receive an object from a source rank."""
-        obj = pickle.loads(
-            self.store.get(
-                f"send_to/{self.rank}/{self.recv_src_counter[src]}"))
+        key = f"send_to/{self.rank}/{self.recv_src_counter[src]}"
+        logger.debug(f"Receiving obj from {src} via path: {key}")
+        obj = pickle.loads(self.store.get(key))
         self.recv_src_counter[src] += 1
         return obj
 
@@ -197,6 +198,7 @@ class StatelessProcessGroup:
         rank: int,
         world_size: int,
         data_expiration_seconds: int = 3600,
+        wait_for_workers: bool = True,
     ) -> "StatelessProcessGroup":
         """A replacement for `torch.distributed.init_process_group` that does not
         pollute the global state.
@@ -213,13 +215,22 @@ class StatelessProcessGroup:
         can call `StatelessProcessGroup.create` to form a group, and then process A, B,
         C, and D can call `StatelessProcessGroup.create` to form another group.
         """ # noqa
+        logger.debug("Here: store = TCPStore(")
+        logger.debug(f"""
+            host_name={host},
+            port={port},
+            world_size={world_size},
+            is_master=({rank} == 0),
+        """)
         store = TCPStore(
             host_name=host,
             port=port,
             world_size=world_size,
             is_master=(rank == 0),
+            wait_for_workers=wait_for_workers,
         )
 
+        logger.debug("Here: return StatelessProcessGroup(")
         return StatelessProcessGroup(
             rank=rank,
             world_size=world_size,
