@@ -17,7 +17,7 @@ class InfinibandModelLoader:
     def _send_tensor(self, pipe: PyNcclPipe, name: str, tensor: torch.Tensor):
         while True:
             torch.cuda.synchronize()
-            check_sum = torch.sum(tensor, dtype=tensor.dtype).to(device="cpu")
+            check_sum = torch.sum(tensor, dtype=torch.bfloat16).to(device="cpu")
             torch.cuda.synchronize()
             logger.debug(f"Sending tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}")
             meta = pipe.send_tensor_with_response(tensor, metadata={
@@ -90,7 +90,7 @@ class InfinibandModelLoader:
             name = bytes(name_raw.numpy()).decode('u8')
             check_sum = metadata['check_sum']
             torch.cuda.synchronize()
-            real_sum = torch.sum(tensor).to(device="cpu")
+            real_sum = torch.sum(tensor, dtype=torch.bfloat16).to(device="cpu")
             torch.cuda.synchronize()
             logger.debug(f"Receiving tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}, {real_sum.dtype}, {real_sum}")
             logger.debug("Check sum difference: {}".format(check_sum - real_sum))
