@@ -183,15 +183,9 @@ class DefaultModelLoader(BaseModelLoader):
 
     def __init__(self, load_config: LoadConfig):
         super().__init__(load_config)
-        self.ib_loader = InfinibandModelLoader()
-        # if load_config.load_format == LoadFormat.IB:
-        #     self.rank = int(load_config.model_loader_extra_config["rank"])
-        #     if self.rank == 0:
-        #         pass
-
-        # if load_config.model_loader_extra_config:
-        #     raise ValueError(f"Model loader extra config is not supported for "
-        #                      f"load format {load_config.load_format}")
+        if load_config.model_loader_extra_config:
+            raise ValueError(f"Model loader extra config is not supported for "
+                             f"load format {load_config.load_format}")
 
     def _maybe_download_from_modelscope(
             self, model: str, revision: Optional[str]) -> Optional[str]:
@@ -313,13 +307,8 @@ class DefaultModelLoader(BaseModelLoader):
                 hf_folder,
                 hf_weights_files,
             )
-        elif self.load_config.load_format == LoadFormat.IB:
-            weights_iterator = self.ib_loader.load_tensors()
         elif use_safetensors:
             weights_iterator = safetensors_weights_iterator(hf_weights_files)
-            # TODO : doesn't work with secondary_weights
-            self.ib_loader.send_stream(weights_iterator)
-            exit(0)
         else:
             weights_iterator = pt_weights_iterator(hf_weights_files)
 
@@ -376,6 +365,8 @@ class DefaultModelLoader(BaseModelLoader):
                 model = _initialize_model(vllm_config=vllm_config)
 
             weights_to_load = {name for name, _ in model.named_parameters()}
+            for key, param in model.state_dict().items():
+                print(key, param.shape)
             loaded_weights = model.load_weights(
                 self._get_all_weights(model_config, model, device_config.device))
             # We only enable strict check for non-quantized models
@@ -421,6 +412,41 @@ class DummyModelLoader(BaseModelLoader):
             # NOTE(woosuk): For accurate performance evaluation, we assign
             # random values to the weights.
             initialize_dummy_weights(model)
+
+            for _, module in model.named_modules():
+                quant_method = getattr(module, "quant_method", None)
+                if quant_method is not None:
+                    # When quant methods need to process weights after loading
+                    # (for repacking, quantizing, etc), they expect parameters
+                    # to be on the global target device. This scope is for the
+                    # case where cpu offloading is used, where we will move the
+                    # parameters onto device for processing and back off after.
+                    with device_loading_context(
+                            module, torch.device(device_config.device)):
+                        quant_method.process_weights_after_loading(module)
+        return model.eval()
+
+
+class IBModelLoader(BaseModelLoader):
+    """Model loader that will set model weights to random values."""
+
+    def __init__(self, load_config: LoadConfig):
+        super().__init__(load_config)
+        self.ib_loader = InfinibandModelLoader()
+        if load_config.model_loader_extra_config:
+            raise ValueError(f"Model loader extra config is not supported for "
+                             f"load format {load_config.load_format}")
+
+    def download_model(self, model_config: ModelConfig) -> None:
+        pass  # Nothing to download
+
+    def load_model(self, vllm_config: VllmConfig) -> nn.Module:
+        device_config = vllm_config.device_config
+        model_config = vllm_config.model_config
+        with set_default_torch_dtype(model_config.dtype):
+            with torch.device(device_config.device):
+                model = _initialize_model(vllm_config=vllm_config)
+            self.ib_loader.fetch_model_weights(model)
 
             for _, module in model.named_modules():
                 quant_method = getattr(module, "quant_method", None)
