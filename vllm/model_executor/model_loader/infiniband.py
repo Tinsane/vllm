@@ -15,7 +15,9 @@ class InfinibandModelLoader:
 
     def _send_tensor(self, pipe: PyNcclPipe, name: str, tensor: torch.Tensor):
         while True:
+            torch.cuda.synchronize()
             check_sum = torch.sum(tensor, dtype=tensor.dtype).to(device="cpu")
+            torch.cuda.synchronize()
             logger.debug(f"Sending tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}")
             meta = pipe.send_tensor_with_response(tensor, metadata={
                 "finished": torch.zeros((1,), dtype=torch.bool, device='cpu'),
@@ -80,10 +82,12 @@ class InfinibandModelLoader:
             name_raw = metadata['name']
             name = bytes(name_raw.numpy()).decode('u8')
             check_sum = metadata['check_sum']
+            torch.cuda.synchronize()
             real_sum = torch.sum(tensor).to(device="cpu")
+            torch.cuda.synchronize()
             logger.debug(f"Receiving tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}, {real_sum.dtype}, {real_sum}")
+            logger.debug("Check sum difference: {}".format(check_sum - real_sum))
             if abs(check_sum - real_sum) < 1e-6:
-                logger.debug(f"Checksum difference: {check_sum}")
                 pipe.send_metadata_only({
                     'success': torch.ones((1,), dtype=torch.bool, device='cpu')
                 })

@@ -75,7 +75,7 @@ class PyNcclPipe(KVPipeBase):
         self.device_send_func, self.device_recv_func = impl
         # set target rank
         self.target_rank_for_send = (self.kv_rank + 1) % self.kv_parallel_size
-        self.target_rank_for_recv = (self.kv_rank - 1) % self.kv_parallel_size
+        self.target_rank_for_recv = (self.kv_rank + 1) % self.kv_parallel_size
 
         # transportation-related variables
         self.transport_thread: Optional[ThreadPoolExecutor] = None
@@ -185,7 +185,9 @@ class PyNcclPipe(KVPipeBase):
         """
         self._send_tensor_metadata(tensor, extra_metadata)
         if tensor is not None:
-            self.device_send_func(tensor.to(self.device), self.target_rank_for_send)
+            tensor = tensor.to(self.device)
+            torch.cuda.synchronize()
+            self.device_send_func(tensor, self.target_rank_for_send)
 
     def _recv_impl(self) -> Tuple[Optional[torch.Tensor], Metadata]:
         """
@@ -200,6 +202,7 @@ class PyNcclPipe(KVPipeBase):
         if 'dtype' not in metadata or metadata["dtype"] is None:
             return None, metadata
         buffer = self._prepare_recv_buffer(metadata)
+        torch.cuda.synchronize()
         self.device_recv_func(buffer, self.target_rank_for_recv)
         del metadata["dtype"]
         del metadata["shape"]
@@ -232,7 +235,9 @@ class PyNcclPipe(KVPipeBase):
         """
         try:
             if tensor is not None:
-                self.device_send_func(tensor.to(self.device), self.target_rank_for_send)
+                tensor = tensor.to(self.device)
+                torch.cuda.synchronize()
+                self.device_send_func(tensor, self.target_rank_for_send)
 
             with self.buffer_size_lock:
                 self.buffer_size -= tensor_size
