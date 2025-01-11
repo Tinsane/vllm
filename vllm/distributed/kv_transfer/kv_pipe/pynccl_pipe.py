@@ -168,6 +168,12 @@ class PyNcclPipe(KVPipeBase):
         """
         return self.group.recv_obj(self.target_rank_for_recv)
 
+    def _send_tensor_metadata(self, tensor: torch.Tensor, extra_metadata: Optional[Metadata] = None) -> None:
+        metadata = self._make_metadata(tensor)
+        if extra_metadata is not None:
+            metadata = {**metadata, **extra_metadata}
+        self._send_metadata(metadata)
+
     def _send_impl(self, tensor: Optional[torch.Tensor], extra_metadata: Optional[Metadata] = None) -> None:
         """
         The actual implementation of sending the tensor and its metadata to the 
@@ -177,15 +183,11 @@ class PyNcclPipe(KVPipeBase):
             - tensor: The input tensor to be sent, or None if no tensor is 
               being sent.
         """
-        metadata = self._make_metadata(tensor)
-        if extra_metadata is not None:
-            metadata = {**metadata, **extra_metadata}
-        self._send_metadata(metadata)
+        self._send_tensor_metadata(tensor, extra_metadata)
         if tensor is not None:
             tensor = tensor.to(self.device)
             torch.cuda.synchronize()
-            self.device_send_func(tensor,
-                                  self.target_rank_for_send)
+            self.device_send_func(tensor, self.target_rank_for_send)
 
     def _recv_impl(self) -> Optional[Tuple[torch.Tensor, Metadata]]:
         """
@@ -210,9 +212,6 @@ class PyNcclPipe(KVPipeBase):
     def send_metadata_only(self, metadata: Metadata) -> None:
         self._send_metadata(metadata)
 
-    def receive_metadata_only(self) -> Metadata:
-        return self._recv_metadata()
-
     def send_tensor_wrapper(self, tensor: Optional[torch.Tensor],
                             tensor_size: int,
                             metadata: Optional[Metadata]) -> None:
@@ -221,6 +220,24 @@ class PyNcclPipe(KVPipeBase):
         """
         try:
             self._send_impl(tensor, metadata)
+
+            with self.buffer_size_lock:
+                self.buffer_size -= tensor_size
+        except Exception as e:
+            logger.error("[rank%d]: Exception when trying to send %s, msg: %s",
+                         torch.distributed.get_rank(), str(tensor), str(e))
+            import traceback
+            traceback.print_exc()
+
+    def _send_tensor_only(self, tensor: Optional[torch.Tensor], tensor_size: int) -> None:
+        """
+        Wrapper for _send_impl to handle exceptions and update buffer size.
+        """
+        try:
+            if tensor is not None:
+                tensor = tensor.to(self.device)
+                torch.cuda.synchronize()
+                self.device_send_func(tensor, self.target_rank_for_send)
 
             with self.buffer_size_lock:
                 self.buffer_size -= tensor_size
@@ -262,6 +279,31 @@ class PyNcclPipe(KVPipeBase):
 
         self.transport_thread.submit(self.send_tensor_wrapper, tensor,
                                      tensor_size, metadata)
+
+    def send_tensor_with_response(self, tensor: Optional[torch.Tensor], metadata: Optional[Metadata] = None) -> Metadata:
+        """
+        Sends a tensor and its metadata to the destination rank in a
+        non-blocking way.
+
+        Parameters:
+            - tensor: The tensor to send, or None if no tensor is being sent.
+        """
+        if self.transport_thread is None:
+            self.transport_thread = ThreadPoolExecutor(max_workers=1)
+
+        if tensor is not None:
+            tensor_size = tensor.element_size() * tensor.numel()
+        else:
+            tensor_size = 0
+
+        self.block_if_full()
+
+        with self.buffer_size_lock:
+            self.buffer_size += tensor_size
+
+        self._send_tensor_metadata(tensor, metadata)
+        self.transport_thread.submit(self._send_tensor_only, tensor, tensor_size)
+        return self._recv_metadata()
 
     def recv_tensor(self) -> Optional[Tuple[torch.Tensor, Metadata]]:
         """

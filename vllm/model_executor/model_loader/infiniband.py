@@ -19,12 +19,11 @@ class InfinibandModelLoader:
             check_sum = torch.sum(tensor, dtype=tensor.dtype).to(device="cpu")
             torch.cuda.synchronize()
             logger.debug(f"Sending tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}")
-            pipe.send_tensor(tensor, metadata={
+            meta = pipe.send_tensor_with_response(tensor, metadata={
                 "finished": torch.zeros((1,), dtype=torch.bool, device='cpu'),
                 "name": torch.tensor(list(name.encode('u8')), dtype=torch.uint8, device="cpu"),
                 "check_sum": check_sum
             })
-            meta = pipe.receive_metadata_only()
             if meta["success"].numpy():
                 break
 
