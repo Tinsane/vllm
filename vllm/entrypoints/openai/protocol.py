@@ -1433,6 +1433,11 @@ class UnloadLoraAdapterRequest(BaseModel):
     lora_int_id: Optional[int] = Field(default=None)
 
 
+class ModelReplicationRequest(BaseModel):
+    dst_ip: str
+    dst_port: int
+
+
 ## Protocols for Audio
 AudioResponseFormat: TypeAlias = Literal["json", "text", "srt", "verbose_json",
                                          "vtt"]

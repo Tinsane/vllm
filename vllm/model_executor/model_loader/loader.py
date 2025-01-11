@@ -39,6 +39,7 @@ from vllm.model_executor.layers.linear import (LinearBase,
                                                RowParallelLinear)
 from vllm.model_executor.layers.quantization.base_config import (
     QuantizeMethodBase)
+from vllm.model_executor.model_loader.infiniband import InfinibandModelLoader
 from vllm.model_executor.model_loader.tensorizer import (
     TensorizerConfig, is_vllm_tensorized, load_with_tensorizer,
     serialize_vllm_model, tensorizer_weights_iterator)
@@ -51,7 +52,7 @@ from vllm.model_executor.model_loader.weight_utils import (
     filter_duplicate_safetensors_files, filter_files_not_needed_for_inference,
     get_gguf_extra_tensor_names, gguf_quant_weights_iterator,
     initialize_dummy_weights, np_cache_weights_iterator, pt_weights_iterator,
-    runai_safetensors_weights_iterator, safetensors_weights_iterator)
+    runai_safetensors_weights_iterator, safetensors_weights_iterator, get_lock)
 from vllm.model_executor.utils import set_weight_attrs
 from vllm.platforms import current_platform
 from vllm.transformers_utils.s3_utils import glob as s3_glob
@@ -267,7 +268,7 @@ class DefaultModelLoader(BaseModelLoader):
         # Some quantized models use .pt files for storing the weights.
         if load_format == LoadFormat.AUTO:
             allow_patterns = ["*.safetensors", "*.bin"]
-        elif load_format == LoadFormat.SAFETENSORS:
+        elif load_format == LoadFormat.SAFETENSORS or load_format == LoadFormat.IB:
             use_safetensors = True
             allow_patterns = ["*.safetensors"]
         elif load_format == LoadFormat.MISTRAL:
@@ -332,7 +333,7 @@ class DefaultModelLoader(BaseModelLoader):
         return hf_folder, hf_weights_files, use_safetensors
 
     def _get_weights_iterator(
-            self, source: "Source"
+            self, source: "Source", device: torch.device
     ) -> Generator[Tuple[str, torch.Tensor], None, None]:
         """Get an iterator for the model weights based on the load format."""
         hf_folder, hf_weights_files, use_safetensors = self._prepare_weights(
@@ -372,6 +373,7 @@ class DefaultModelLoader(BaseModelLoader):
         self,
         model_config: ModelConfig,
         model: nn.Module,
+        device: torch.device,
     ) -> Generator[Tuple[str, torch.Tensor], None, None]:
         primary_weights = DefaultModelLoader.Source(
             model_config.model,
@@ -382,14 +384,14 @@ class DefaultModelLoader(BaseModelLoader):
             allow_patterns_overrides=getattr(model, "allow_patterns_overrides",
                                              None),
         )
-        yield from self._get_weights_iterator(primary_weights)
+        yield from self._get_weights_iterator(primary_weights, device)
 
         secondary_weights = cast(
             Iterable[DefaultModelLoader.Source],
             getattr(model, "secondary_weights", ()),
         )
         for source in secondary_weights:
-            yield from self._get_weights_iterator(source)
+            yield from self._get_weights_iterator(source, device)
 
     def download_model(self, model_config: ModelConfig) -> None:
         self._prepare_weights(model_config.model,
@@ -405,9 +407,11 @@ class DefaultModelLoader(BaseModelLoader):
             with target_device:
                 model = _initialize_model(vllm_config=vllm_config)
 
+            # for name, tensor in model.state_dict().items():
+            #     logger.debug(f"Fetching tensor {name} with shape {tensor.shape}")
             weights_to_load = {name for name, _ in model.named_parameters()}
             loaded_weights = model.load_weights(
-                self._get_all_weights(model_config, model))
+                self._get_all_weights(model_config, model, device_config.device))
             # We only enable strict check for non-quantized models
             # that have loaded weights tracking currently.
             if model_config.quantization is None and loaded_weights is not None:
@@ -446,6 +450,44 @@ class DummyModelLoader(BaseModelLoader):
             initialize_dummy_weights(model)
 
             _process_weights_after_loading(model, model_config, target_device)
+        return model.eval()
+
+
+class IBModelLoader(BaseModelLoader):
+    """Model loader that will set model weights to random values."""
+
+    def __init__(self, load_config: LoadConfig, rank: int):
+        super().__init__(load_config)
+        self.ib_loader = InfinibandModelLoader(rank)
+        if load_config.model_loader_extra_config:
+            raise ValueError(f"Model loader extra config is not supported for "
+                             f"load format {load_config.load_format}")
+
+    def download_model(self, model_config: ModelConfig) -> None:
+        pass  # Nothing to download
+
+    def load_model(self, vllm_config: VllmConfig) -> nn.Module:
+        device_config = vllm_config.device_config
+        model_config = vllm_config.model_config
+        with set_default_torch_dtype(model_config.dtype):
+            with torch.device(device_config.device):
+                model = _initialize_model(vllm_config=vllm_config)
+
+            for _, module in model.named_modules():
+                quant_method = getattr(module, "quant_method", None)
+                if quant_method is not None:
+                    # When quant methods need to process weights after loading
+                    # (for repacking, quantizing, etc), they expect parameters
+                    # to be on the global target device. This scope is for the
+                    # case where cpu offloading is used, where we will move the
+                    # parameters onto device for processing and back off after.
+                    with device_loading_context(
+                            module, torch.device(device_config.device)):
+                        quant_method.process_weights_after_loading(module)
+        # Loading weights after quantization because it was performed on a different machine
+        # Also quantization "process_weights_after_loading" can change tensor shape
+        # with get_lock(model_config.model):
+        self.ib_loader.fetch_model_weights(model)
         return model.eval()
 
 
@@ -1392,7 +1434,7 @@ class RunaiModelStreamerLoader(BaseModelLoader):
         return model.eval()
 
 
-def get_model_loader(load_config: LoadConfig) -> BaseModelLoader:
+def get_model_loader(load_config: LoadConfig, rank: int = 0) -> BaseModelLoader:
     """Get a model loader based on the load format."""
 
     if isinstance(load_config.load_format, type):
@@ -1400,6 +1442,9 @@ def get_model_loader(load_config: LoadConfig) -> BaseModelLoader:
 
     if load_config.load_format == LoadFormat.DUMMY:
         return DummyModelLoader(load_config)
+
+    if load_config.load_format == LoadFormat.IB:
+        return IBModelLoader(load_config, rank)
 
     if load_config.load_format == LoadFormat.TENSORIZER:
         return TensorizerLoader(load_config)

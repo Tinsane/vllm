@@ -291,4 +291,7 @@ class EngineClient(ABC):
     @abstractmethod
     async def add_lora(self, lora_request: LoRARequest) -> None:
         """Load a new LoRA adapter into the engine for future requests."""
+
+    async def replicate_model(self) -> None:
+        """Sends model weights over infiniband to different vLLM instance"""
         ...
