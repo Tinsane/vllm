@@ -107,6 +107,10 @@ class ExecutorBase(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def perform_infiniband_load(self) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
     def check_health(self) -> None:
         """Checks if the executor is healthy. If not, it should raise an
         exception."""

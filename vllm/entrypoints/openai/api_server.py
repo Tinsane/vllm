@@ -315,6 +315,13 @@ async def health(raw_request: Request) -> Response:
     return Response(status_code=200)
 
 
+@router.post("/infiniband_load")
+async def infiniband_load(raw_request: Request) -> Response:
+    """Health check."""
+    await engine_client(raw_request).infiniband_load()
+    return Response(status_code=200)
+
+
 @router.post("/tokenize")
 @with_cancellation
 async def tokenize(request: TokenizeRequest, raw_request: Request):

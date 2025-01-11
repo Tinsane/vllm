@@ -270,3 +270,8 @@ class EngineClient(ABC):
     async def stop_profile(self) -> None:
         """Start profiling the engine"""
         ...
+
+    @abstractmethod
+    async def infiniband_load(self) -> None:
+        """Sends model weights over infiniband to different vLLM instance"""
+        ...

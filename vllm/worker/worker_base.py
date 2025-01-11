@@ -116,6 +116,10 @@ class WorkerBase(ABC):
     def list_loras(self) -> Set[int]:
         raise NotImplementedError
 
+    @abstractmethod
+    def perform_infiniband_load(self) -> None:
+        raise NotImplementedError
+
 
 class LoraNotSupportedWorkerBase(WorkerBase):
     """Partial implementation of WorkerBase that raises exceptions when LoRA

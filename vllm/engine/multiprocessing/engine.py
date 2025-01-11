@@ -16,7 +16,7 @@ from vllm.engine.multiprocessing import (ENGINE_DEAD_ERROR, IPC_DATA_EXT,
                                          VLLM_RPC_SUCCESS_STR, RPCAbortRequest,
                                          RPCError, RPCProcessRequest,
                                          RPCStartupRequest, RPCStartupResponse,
-                                         RPCUProfileRequest)
+                                         RPCUProfileRequest, RPCInfinibandLoadRequest)
 # yapf: enable
 from vllm.executor.gpu_executor import GPUExecutor
 from vllm.logger import init_logger
@@ -229,6 +229,8 @@ class MQLLMEngine:
                     self._handle_process_request(request)
                 elif isinstance(request, RPCAbortRequest):
                     self._handle_abort_request(request)
+                elif isinstance(request, RPCInfinibandLoadRequest):
+                    self._handle_infiniband_load_request(request)
                 elif isinstance(request, RPCUProfileRequest):
                     if request == RPCUProfileRequest.START_PROFILE:
                         self.start_profile()
@@ -345,6 +347,11 @@ class MQLLMEngine:
             self.engine.model_executor.stop_profile()
         else:
             self.engine.model_executor._run_workers("stop_profile")
+
+    def _handle_infiniband_load_request(self, request: RPCInfinibandLoadRequest):
+        self.engine.perform_infiniband_load()
+        if self.log_requests:
+            logger.info("Performed infiniband load")
 
 
 def signal_handler(*_) -> None:

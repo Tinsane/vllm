@@ -2029,3 +2029,24 @@ class LLMEngine:
                 sampling_params.logits_processors.extend(logits_processors)
 
         return sampling_params
+
+    def perform_infiniband_load(self) -> None:
+        """Transfer model weights by inifiband to another vLLM instance
+
+        Args:
+            TODO
+
+        Details:
+            TODO
+            - Refer to the
+              :meth:`~vllm.core.scheduler.Scheduler.abort_seq_group`
+              from class :class:`~vllm.core.scheduler.Scheduler`.
+
+        Example:
+            TODO
+            >>> # initialize engine and add a request with request_id
+            >>> request_id = str(0)
+            >>> # abort the request
+            >>> engine.perform_infiniband_load(request_id)
+        """
+        self.model_executor.perform_infiniband_load()

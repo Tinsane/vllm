@@ -127,6 +127,9 @@ class GPUExecutor(ExecutorBase):
         # it's running.
         return
 
+    def perform_infiniband_load(self) -> None:
+        self.driver_worker.perform_infiniband_load()
+
     def start_profile(self) -> None:
         self.driver_worker.start_profile()
 

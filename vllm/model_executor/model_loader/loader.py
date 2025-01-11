@@ -365,8 +365,6 @@ class DefaultModelLoader(BaseModelLoader):
                 model = _initialize_model(vllm_config=vllm_config)
 
             weights_to_load = {name for name, _ in model.named_parameters()}
-            for key, param in model.state_dict().items():
-                print(key, param.shape)
             loaded_weights = model.load_weights(
                 self._get_all_weights(model_config, model, device_config.device))
             # We only enable strict check for non-quantized models
@@ -1385,6 +1383,9 @@ def get_model_loader(load_config: LoadConfig) -> BaseModelLoader:
 
     if load_config.load_format == LoadFormat.DUMMY:
         return DummyModelLoader(load_config)
+
+    if load_config.load_format == LoadFormat.IB:
+        return IBModelLoader(load_config)
 
     if load_config.load_format == LoadFormat.TENSORIZER:
         return TensorizerLoader(load_config)

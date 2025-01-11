@@ -115,13 +115,18 @@ class RPCStartupResponse:
     tracing_enabled: bool
 
 
+@dataclass
+class RPCInfinibandLoadRequest:
+    pass
+
+
 class RPCUProfileRequest(Enum):
     START_PROFILE = 1
     STOP_PROFILE = 2
 
 
 RPC_REQUEST_T = Union[RPCProcessRequest, RPCAbortRequest, RPCStartupRequest,
-                      RPCUProfileRequest]
+                      RPCUProfileRequest, RPCInfinibandLoadRequest]
 
 REQUEST_OUTPUTS_T = Union[List[RequestOutput], RPCError]
 

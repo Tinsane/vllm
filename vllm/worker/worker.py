@@ -444,6 +444,9 @@ class Worker(LocalOrDistributedWorkerBase):
                                                 self.model_config,
                                                 self.parallel_config)
 
+    def perform_infiniband_load(self) -> None:
+        return self.model_runner.perform_infiniband_load()
+
 
 def init_worker_distributed_environment(
     vllm_config: VllmConfig,

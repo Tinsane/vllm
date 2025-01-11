@@ -34,6 +34,7 @@ from vllm.model_executor import SamplingMetadata, SamplingMetadataCache
 from vllm.model_executor.layers.rotary_embedding import MRotaryEmbedding
 from vllm.model_executor.layers.sampler import SamplerOutput
 from vllm.model_executor.model_loader import get_model
+from vllm.model_executor.model_loader.infiniband import InfinibandModelLoader
 from vllm.model_executor.model_loader.tensorizer import TensorizerConfig
 from vllm.model_executor.models import supports_lora, supports_multimodal
 from vllm.model_executor.models.utils import set_cpu_offload_max_bytes
@@ -1070,6 +1071,7 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
 
         # Lazy initialization
         self.model: nn.Module  # Set after load_model
+        self._loaded_model = False
         # Set after load_model.
         self.lora_manager: Optional[LRUCacheWorkerLoRAManager] = None
         self.prompt_adapter_manager: LRUCacheWorkerPromptAdapterManager = None
@@ -1171,6 +1173,7 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
                 self.model,
                 fullgraph=envs.VLLM_TEST_DYNAMO_FULLGRAPH_CAPTURE,
                 backend=backend)
+        self._loaded_model = True
 
     def save_sharded_state(
         self,
@@ -1556,6 +1559,11 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
     @property
     def vocab_size(self) -> int:
         return self.model_config.get_vocab_size()
+
+    def perform_infiniband_load(self) -> None:
+        assert self._loaded_model, "Attempting infiniband copying of not loaded model"
+        infiniband_loader = InfinibandModelLoader()
+        infiniband_loader.send_model_weights(self.model)
 
 
 class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
