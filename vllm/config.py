@@ -1221,6 +1221,7 @@ class TokenizerPoolConfig:
 
 
 class LoadFormat(str, enum.Enum):
+    IB = "infiniband"
     AUTO = "auto"
     PT = "pt"
     SAFETENSORS = "safetensors"

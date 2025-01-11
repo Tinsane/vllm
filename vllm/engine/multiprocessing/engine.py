@@ -21,7 +21,7 @@ from vllm.engine.multiprocessing import (ENGINE_DEAD_ERROR, IPC_DATA_EXT,
                                          RPCProcessRequest,
                                          RPCResetPrefixCacheRequest,
                                          RPCStartupRequest, RPCStartupResponse,
-                                         RPCUProfileRequest)
+                                         RPCUProfileRequest, RPCReplicateModelRequest)
 # yapf: enable
 from vllm.logger import init_logger
 from vllm.outputs import RequestOutput
@@ -233,6 +233,8 @@ class MQLLMEngine:
                     self._handle_process_request(request)
                 elif isinstance(request, RPCAbortRequest):
                     self._handle_abort_request(request)
+                elif isinstance(request, RPCReplicateModelRequest):
+                    self._handle_replicate_model_request(request)
                 elif isinstance(request, RPCUProfileRequest):
                     if request == RPCUProfileRequest.START_PROFILE:
                         self.start_profile()
@@ -368,6 +370,11 @@ class MQLLMEngine:
 
     def reset_prefix_cache(self) -> bool:
         return self.engine.reset_prefix_cache()
+
+    def _handle_replicate_model_request(self, request: RPCReplicateModelRequest):
+        self.engine.replicate_model(request.dst_ip, request.dst_port)
+        if self.log_requests:
+            logger.info("Performed infiniband load")
 
 
 def signal_handler(*_) -> None:

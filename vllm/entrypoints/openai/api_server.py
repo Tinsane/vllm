@@ -62,6 +62,7 @@ from vllm.entrypoints.openai.protocol import (ChatCompletionRequest,
                                               ScoreRequest, ScoreResponse,
                                               TokenizeRequest,
                                               TokenizeResponse,
+                                              ModelReplicationRequest,
                                               UnloadLoraAdapterRequest)
 from vllm.entrypoints.openai.reasoning_parsers import ReasoningParserManager
 # yapf: enable
@@ -334,6 +335,13 @@ async def health(raw_request: Request) -> Response:
 async def ping(raw_request: Request) -> Response:
     """Ping check. Endpoint required for SageMaker"""
     return await health(raw_request)
+
+
+@router.post("/infiniband_load")
+async def infiniband_load(request: ModelReplicationRequest, raw_request: Request) -> Response:
+    """Health check."""
+    await engine_client(raw_request).replicate_model(request)
+    return Response(status_code=200)
 
 
 @router.post("/tokenize")

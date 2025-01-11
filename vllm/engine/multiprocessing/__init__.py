@@ -118,6 +118,12 @@ class RPCStartupResponse:
     tracing_enabled: bool
 
 
+@dataclass
+class RPCReplicateModelRequest:
+    dst_ip: str
+    dst_port: int
+
+
 class RPCUProfileRequest(Enum):
     START_PROFILE = 1
     STOP_PROFILE = 2
@@ -141,7 +147,7 @@ class RPCAdapterLoadedResponse:
 
 RPC_REQUEST_T = Union[RPCProcessRequest, RPCAbortRequest, RPCStartupRequest,
                       RPCUProfileRequest, RPCLoadAdapterRequest,
-                      RPCResetPrefixCacheRequest]
+                      RPCResetPrefixCacheRequest, RPCReplicateModelRequest]
 
 REQUEST_OUTPUTS_T = Union[List[RequestOutput], RPCAdapterLoadedResponse,
                           RPCError]

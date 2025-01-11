@@ -128,6 +128,10 @@ class WorkerBase(ABC):
     def list_loras(self) -> Set[int]:
         raise NotImplementedError
 
+    @abstractmethod
+    def replicate_model(self, dst_ip: str, dst_port: int, rank: int) -> None:
+        raise NotImplementedError
+
 
 class DelegateWorkerBase(WorkerBase):
     """
