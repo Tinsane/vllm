@@ -189,7 +189,7 @@ class PyNcclPipe(KVPipeBase):
             torch.cuda.synchronize()
             self.device_send_func(tensor, self.target_rank_for_send)
 
-    def _recv_impl(self) -> Optional[Tuple[torch.Tensor, Metadata]]:
+    def _recv_impl(self) -> Tuple[Optional[torch.Tensor], Metadata]:
         """
         The actual implementation of receiving a tensor and its metadata from 
         the target rank.
@@ -200,7 +200,7 @@ class PyNcclPipe(KVPipeBase):
         metadata = self._recv_metadata()
         logger.debug(f"Received metadata: {metadata}")
         if 'dtype' not in metadata or metadata["dtype"] is None:
-            return None
+            return None, metadata
         buffer = self._prepare_recv_buffer(metadata)
         torch.cuda.synchronize()
         self.device_recv_func(buffer, self.target_rank_for_recv)
@@ -305,7 +305,7 @@ class PyNcclPipe(KVPipeBase):
         self.transport_thread.submit(self._send_tensor_only, tensor, tensor_size)
         return self._recv_metadata()
 
-    def recv_tensor(self) -> Optional[Tuple[torch.Tensor, Metadata]]:
+    def recv_tensor(self) -> Tuple[Optional[torch.Tensor], Metadata]:
         """
         Receives a tensor and its metadata from the source rank. Blocking call.
 
