@@ -82,8 +82,8 @@ class InfinibandModelLoader:
             check_sum = metadata['check_sum']
             real_sum = torch.sum(tensor).to(device="cpu")
             logger.debug(f"Receiving tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}, {real_sum.dtype}, {real_sum}")
-            logger.debug(f"Checksum difference: {check_sum}")
             if abs(check_sum - real_sum) < 1e-6:
+                logger.debug(f"Checksum difference: {check_sum}")
                 pipe.send_metadata_only({
                     'success': torch.ones((1,), dtype=torch.bool, device='cpu')
                 })
