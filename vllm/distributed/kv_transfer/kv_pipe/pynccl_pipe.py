@@ -146,7 +146,9 @@ class PyNcclPipe(KVPipeBase):
               self.device.
         """
         return torch.empty(metadata["shape"],
-                           dtype=metadata["dtype"],
+                           # TODO Change to metadata["dtype"] after updating to nccl >= 2.24.3.
+                           #  Earlier versions don't support FP8 sending.
+                           dtype=torch.bfloat16,
                            device=self.device)
 
     def _send_metadata(self, metadata: Metadata):
@@ -185,7 +187,9 @@ class PyNcclPipe(KVPipeBase):
         """
         self._send_tensor_metadata(tensor, extra_metadata)
         if tensor is not None:
-            self.device_send_func(tensor.to(self.device), self.target_rank_for_send)
+            # TODO Remove dtype conversion after updating to nccl >= 2.24.3.
+            #  Earlier versions don't support FP8 sending.
+            self.device_send_func(tensor.to(self.device).to(dtype=torch.bfloat16), self.target_rank_for_send)
 
     def _recv_impl(self) -> Tuple[Optional[torch.Tensor], Metadata]:
         """
@@ -201,6 +205,9 @@ class PyNcclPipe(KVPipeBase):
             return None, metadata
         buffer = self._prepare_recv_buffer(metadata)
         self.device_recv_func(buffer, self.target_rank_for_recv)
+        # TODO Remove after updating to nccl >= 2.24.3.
+        #  Earlier versions don't support FP8 sending.
+        buffer = buffer.to(dtype=metadata["dtype"])
         del metadata["dtype"]
         del metadata["shape"]
 
@@ -232,7 +239,11 @@ class PyNcclPipe(KVPipeBase):
         """
         try:
             if tensor is not None:
-                self.device_send_func(tensor.to(self.device), self.target_rank_for_send)
+                # TODO Remove dtype conversion after updating to nccl >= 2.24.3.
+                #  Earlier versions don't support FP8 sending.
+                to_send = tensor.to(self.device).to(dtype=torch.bfloat16)
+                torch.cuda.synchronize()
+                self.device_send_func(to_send, self.target_rank_for_send)
 
             with self.buffer_size_lock:
                 self.buffer_size -= tensor_size
