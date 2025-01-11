@@ -45,7 +45,7 @@ class InfinibandModelLoader:
             local_rank=self._rank,
             config=config,
             device="cuda",
-            port_offset=self._rank,
+            port_offset=self._rank * 2,
         )
 
         logger.debug("Here: for name, tensor in stream: ")
@@ -78,7 +78,7 @@ class InfinibandModelLoader:
         pipe = PyNcclPipe(
             local_rank=self._rank,
             config=config,
-            port_offset=self._rank
+            port_offset=self._rank * 2,
             # device=device,
         )
         while True:
