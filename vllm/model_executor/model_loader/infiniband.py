@@ -69,11 +69,13 @@ class InfinibandModelLoader:
             kv_port=29503,
         )
         # TODO : potential race condition with sender PyNcclPipe->TCPStore init :(
-        requests.post('http://192.168.0.28:8000/infiniband_load',
-                      json={
-                          "dst_ip": "89.169.100.78",
-                          "dst_port": 29503,
-                      })
+        # TODO : make this request only for master process
+        if self._rank == 0:
+            requests.post('http://192.168.0.28:8000/infiniband_load',
+                          json={
+                              "dst_ip": "89.169.100.78",
+                              "dst_port": 29503,
+                          })
 
         pipe = PyNcclPipe(
             local_rank=self._rank,
@@ -117,8 +119,8 @@ class InfinibandModelLoader:
 
     def fetch_model_weights(self, model: torch.nn.Module):
         state = model.state_dict()
-        for name, tensor in state.items():
-            logger.debug(f"Fetching tensor {name} with shape {tensor.shape}")
+        # for name, tensor in state.items():
+        #     logger.debug(f"Fetching tensor {name} with shape {tensor.shape}")
         for name, tensor in self.load_tensors():
             assert (name in state), f"Unexpected tensor {name}"
             param = state[name]
