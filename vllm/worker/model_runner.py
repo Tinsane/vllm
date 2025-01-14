@@ -1096,8 +1096,8 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
         logger.info("Starting to load model %s...", self.model_config.model)
         with DeviceMemoryProfiler() as m:
             self.model = get_model(vllm_config=self.vllm_config)
-        for name, tensor in self.model.state_dict().items():
-            logger.debug(f"Have tensor {name} with shape {tensor.shape}")
+        # for name, tensor in self.model.state_dict().items():
+        #     logger.debug(f"Have tensor {name} with shape {tensor.shape}")
 
         self.model_memory_usage = m.consumed_memory
         logger.info("Loading model weights took %.4f GB",
