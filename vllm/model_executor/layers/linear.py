@@ -794,7 +794,7 @@ class QKVParallelLinear(ColumnParallelLinear):
         shard_offset = self._get_shard_offset_mapping(loaded_shard_id)
         shard_size = self._get_shard_size_mapping(loaded_shard_id)
 
-        logger.debug("weight_loader_v2")
+        logger.debug(f"weight_loader_v2 loading {param.shape}")
         param.load_qkv_weight(loaded_weight=loaded_weight,
                               num_heads=self.num_kv_head_replicas,
                               shard_id=loaded_shard_id,
