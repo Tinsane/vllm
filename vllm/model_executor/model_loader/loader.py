@@ -46,7 +46,7 @@ from vllm.model_executor.model_loader.weight_utils import (
     filter_duplicate_safetensors_files, filter_files_not_needed_for_inference,
     get_gguf_extra_tensor_names, gguf_quant_weights_iterator,
     initialize_dummy_weights, np_cache_weights_iterator, pt_weights_iterator,
-    runai_safetensors_weights_iterator, safetensors_weights_iterator)
+    runai_safetensors_weights_iterator, safetensors_weights_iterator, get_lock)
 from vllm.model_executor.utils import set_weight_attrs
 from vllm.platforms import current_platform
 from vllm.transformers_utils.s3_utils import glob as s3_glob
@@ -444,7 +444,8 @@ class IBModelLoader(BaseModelLoader):
         with set_default_torch_dtype(model_config.dtype):
             with torch.device(device_config.device):
                 model = _initialize_model(vllm_config=vllm_config)
-            self.ib_loader.fetch_model_weights(model)
+            with get_lock(model_config.model):
+                self.ib_loader.fetch_model_weights(model)
 
             for _, module in model.named_modules():
                 quant_method = getattr(module, "quant_method", None)
