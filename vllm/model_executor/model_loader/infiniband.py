@@ -117,6 +117,8 @@ class InfinibandModelLoader:
 
     def fetch_model_weights(self, model: torch.nn.Module):
         state = model.state_dict()
+        for name, tensor in state:
+            logger.debug(f"Fetching tensor {name} with shape {tensor.shape}")
         for name, tensor in self.load_tensors():
             assert (name in state), f"Unexpected tensor {name}"
             param = state[name]
