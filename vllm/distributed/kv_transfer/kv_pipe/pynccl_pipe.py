@@ -145,11 +145,16 @@ class PyNcclPipe(KVPipeBase):
             - buffer: A tensor of the specified type and shape, allocated on 
               self.device.
         """
-        return torch.empty(metadata["shape"],
-                           # TODO Change to metadata["dtype"] after updating to nccl >= 2.24.3.
-                           #  Earlier versions don't support FP8 sending.
-                           dtype=torch.bfloat16,
-                           device=self.device)
+        if metadata['dtype'].itemsize == 1:
+            return torch.empty(metadata["shape"],
+                               # TODO Change to metadata["dtype"] after updating to nccl >= 2.24.3.
+                               #  Earlier versions don't support FP8 sending.
+                               dtype=torch.uint8,
+                               device=self.device)
+        else:
+            return torch.empty(metadata["shape"],
+                               dtype=metadata["dtype"],
+                               device=self.device)
 
     def _send_metadata(self, metadata: Metadata):
         """
@@ -187,9 +192,12 @@ class PyNcclPipe(KVPipeBase):
         """
         self._send_tensor_metadata(tensor, extra_metadata)
         if tensor is not None:
+            to_send = tensor.to(self.device)
             # TODO Remove dtype conversion after updating to nccl >= 2.24.3.
             #  Earlier versions don't support FP8 sending.
-            self.device_send_func(tensor.to(self.device).to(dtype=torch.bfloat16), self.target_rank_for_send)
+            if to_send.element_size() == 1:
+                to_send = to_send.view(dtype=torch.uint8)
+            self.device_send_func(to_send, self.target_rank_for_send)
 
     def _recv_impl(self) -> Tuple[Optional[torch.Tensor], Metadata]:
         """
@@ -207,7 +215,8 @@ class PyNcclPipe(KVPipeBase):
         self.device_recv_func(buffer, self.target_rank_for_recv)
         # TODO Remove after updating to nccl >= 2.24.3.
         #  Earlier versions don't support FP8 sending.
-        buffer = buffer.to(dtype=metadata["dtype"])
+        if metadata['dtype'].itemsize == 1:
+            buffer = buffer.view(metadata["dtype"])
         del metadata["dtype"]
         del metadata["shape"]
 
@@ -239,9 +248,11 @@ class PyNcclPipe(KVPipeBase):
         """
         try:
             if tensor is not None:
+                to_send = tensor.to(self.device)
                 # TODO Remove dtype conversion after updating to nccl >= 2.24.3.
                 #  Earlier versions don't support FP8 sending.
-                to_send = tensor.to(self.device).to(dtype=torch.bfloat16)
+                if to_send.element_size() == 1:
+                    to_send = to_send.view(dtype=torch.uint8)
                 torch.cuda.synchronize()
                 self.device_send_func(to_send, self.target_rank_for_send)
 
