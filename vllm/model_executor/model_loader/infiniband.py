@@ -120,4 +120,5 @@ class InfinibandModelLoader:
         for name, tensor in self.load_tensors():
             assert (name in state), f"Unexpected tensor {name}"
             param = state[name]
+            logger.debug(f'{name}, received: {tensor.shape}, expected: {param.shape}')
             param.data.copy_(tensor.to(param.data.dtype))
