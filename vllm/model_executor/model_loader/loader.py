@@ -460,8 +460,8 @@ class IBModelLoader(BaseModelLoader):
                         quant_method.process_weights_after_loading(module)
         # Loading weights after quantization because it was performed on a different machine
         # Also quantization "process_weights_after_loading" can change tensor shape
-        with get_lock(model_config.model):
-            self.ib_loader.fetch_model_weights(model)
+        # with get_lock(model_config.model):
+        self.ib_loader.fetch_model_weights(model)
         return model.eval()
 
 
