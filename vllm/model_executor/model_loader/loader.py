@@ -364,6 +364,8 @@ class DefaultModelLoader(BaseModelLoader):
             with target_device:
                 model = _initialize_model(vllm_config=vllm_config)
 
+            for name, tensor in model.state_dict().items():
+                logger.debug(f"Fetching tensor {name} with shape {tensor.shape}")
             weights_to_load = {name for name, _ in model.named_parameters()}
             loaded_weights = model.load_weights(
                 self._get_all_weights(model_config, model, device_config.device))
