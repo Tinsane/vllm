@@ -114,7 +114,7 @@ class EAGLEConfig(PretrainedConfig):
         **kwargs,
     ) -> "EAGLEConfig":
         if pretrained_model_name_or_path == "DeepSeekV3MTP":
-            pretrained_model_name_or_path = "deepseek-ai/DeepSeek-R1"
+            pretrained_model_name_or_path = "/model-storage/deepseek-ai/DeepSeek-R1"
         config_dict, kwargs = cls.get_config_dict(pretrained_model_name_or_path, **kwargs)
         config_dict["model_type"] = "eagle"
         config_dict["num_hidden_layers"] = 1

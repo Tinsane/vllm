@@ -177,7 +177,7 @@ def get_config(
     # Separate model folder from file path for GGUF models
 
     if model == "DeepSeekV3MTP":
-        model_base_name = "deepseek-ai/DeepSeek-R1"
+        model_base_name = "/model-storage/deepseek-ai/DeepSeek-R1"
     else:
         model_base_name = model
 
