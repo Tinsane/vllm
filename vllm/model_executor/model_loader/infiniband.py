@@ -17,9 +17,9 @@ class InfinibandModelLoader:
     def _send_tensor(self, pipe: PyNcclPipe, name: str, tensor: torch.Tensor):
         while True:
             torch.cuda.synchronize()
-            check_sum = torch.sum(tensor, dtype=torch.bfloat16).to(device="cpu")
+            check_sum = torch.sum(tensor.to(dtype=torch.bfloat16)).to(device="cpu")
             torch.cuda.synchronize()
-            logger.debug(f"Sending tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}")
+            logger.debug(f"Sending tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}, {tensor.flatten()[:5]}")
             meta = pipe.send_tensor_with_response(tensor, metadata={
                 "finished": torch.zeros((1,), dtype=torch.bool, device='cpu'),
                 "name": torch.tensor(list(name.encode('u8')), dtype=torch.uint8, device="cpu"),
@@ -45,7 +45,7 @@ class InfinibandModelLoader:
             local_rank=self._rank,
             config=config,
             device="cuda",
-            port_offset=self._rank,
+            port_offset=self._rank * 2,
         )
 
         logger.debug("Here: for name, tensor in stream: ")
@@ -69,16 +69,18 @@ class InfinibandModelLoader:
             kv_port=29503,
         )
         # TODO : potential race condition with sender PyNcclPipe->TCPStore init :(
-        requests.post('http://192.168.0.28:8000/infiniband_load',
-                      json={
-                          "dst_ip": "89.169.100.78",
-                          "dst_port": 29503,
-                      })
+        # TODO : make this request only for master process
+        if self._rank == 0:
+            requests.post('http://192.168.0.28:8000/infiniband_load',
+                          json={
+                              "dst_ip": "89.169.100.78",
+                              "dst_port": 29503,
+                          })
 
         pipe = PyNcclPipe(
             local_rank=self._rank,
             config=config,
-            port_offset=self._rank
+            port_offset=self._rank * 2,
             # device=device,
         )
         while True:
@@ -90,9 +92,9 @@ class InfinibandModelLoader:
             name = bytes(name_raw.numpy()).decode('u8')
             check_sum = metadata['check_sum']
             torch.cuda.synchronize()
-            real_sum = torch.sum(tensor, dtype=torch.bfloat16).to(device="cpu")
+            real_sum = torch.sum(tensor.to(dtype=torch.bfloat16)).to(device="cpu")
             torch.cuda.synchronize()
-            logger.debug(f"Receiving tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}, {real_sum.dtype}, {real_sum}")
+            logger.debug(f"Receiving tensor {name}, {tensor.shape}, {tensor.dtype}, {check_sum.dtype}, {check_sum}, {real_sum.dtype}, {real_sum}, {tensor.flatten()[:5]}")
             logger.debug("Check sum difference: {}".format(check_sum - real_sum))
             if abs(check_sum - real_sum) < 1e-6:
                 pipe.send_metadata_only({
@@ -117,7 +119,10 @@ class InfinibandModelLoader:
 
     def fetch_model_weights(self, model: torch.nn.Module):
         state = model.state_dict()
+        # for name, tensor in state.items():
+        #     logger.debug(f"Fetching tensor {name} with shape {tensor.shape}")
         for name, tensor in self.load_tensors():
             assert (name in state), f"Unexpected tensor {name}"
             param = state[name]
+            logger.debug(f'{name}, received: {tensor.shape}, expected: {param.shape}')
             param.data.copy_(tensor.to(param.data.dtype))
