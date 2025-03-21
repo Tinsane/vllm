@@ -65,15 +65,15 @@ class InfinibandModelLoader:
             kv_rank=0,
             kv_role="kv_both",  # this arg doesn't matter in this test
             kv_parallel_size=2,
-            kv_ip="89.169.100.78",
+            kv_ip="192.168.0.117",
             kv_port=29503,
         )
         # TODO : potential race condition with sender PyNcclPipe->TCPStore init :(
         # TODO : make this request only for master process
         if self._rank == 0:
-            requests.post('http://192.168.0.28:8000/infiniband_load',
+            requests.post('http://192.168.0.92:8000/infiniband_load',
                           json={
-                              "dst_ip": "89.169.100.78",
+                              "dst_ip": "192.168.0.117",
                               "dst_port": 29503,
                           })
 

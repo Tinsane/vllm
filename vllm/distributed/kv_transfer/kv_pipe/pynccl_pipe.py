@@ -147,11 +147,12 @@ class PyNcclPipe(KVPipeBase):
               self.device.
         """
         if metadata['dtype'].itemsize == 1:
+            # TODO : calc proper size right away instead of reshape ad-hoc
             return torch.empty(metadata["shape"],
                                # TODO Change to metadata["dtype"] after updating to nccl >= 2.24.3.
                                #  Earlier versions don't support FP8 sending.
                                dtype=torch.uint8,
-                               device=self.device)
+                               device=self.device).reshape((-1,))
         else:
             return torch.empty(metadata["shape"],
                                dtype=metadata["dtype"],
@@ -197,7 +198,7 @@ class PyNcclPipe(KVPipeBase):
             # TODO Remove dtype conversion after updating to nccl >= 2.24.3.
             #  Earlier versions don't support FP8 sending.
             if to_send.element_size() == 1:
-                to_send = to_send.view(dtype=torch.uint8)
+                to_send = to_send.reshape((-1,)).view(dtype=torch.uint8)
             self.device_send_func(to_send, self.target_rank_for_send)
 
     def _recv_impl(self) -> Tuple[Optional[torch.Tensor], Metadata]:
@@ -210,14 +211,16 @@ class PyNcclPipe(KVPipeBase):
         """
         metadata = self._recv_metadata()
         logger.debug(f"Received metadata: {metadata}")
-        if 'dtype' not in metadata or metadata["dtype"] is None:
+        if "dtype" not in metadata or metadata["dtype"] is None:
+            return None, metadata
+        if "shape" not in metadata or metadata["shape"] is None:
             return None, metadata
         buffer = self._prepare_recv_buffer(metadata)
         self.device_recv_func(buffer, self.target_rank_for_recv)
         # TODO Remove after updating to nccl >= 2.24.3.
         #  Earlier versions don't support FP8 sending.
         if metadata['dtype'].itemsize == 1:
-            buffer = buffer.view(metadata["dtype"])
+            buffer = buffer.view(metadata["dtype"]).reshape(metadata["shape"])
         del metadata["dtype"]
         del metadata["shape"]
 
@@ -253,7 +256,7 @@ class PyNcclPipe(KVPipeBase):
                 # TODO Remove dtype conversion after updating to nccl >= 2.24.3.
                 #  Earlier versions don't support FP8 sending.
                 if to_send.element_size() == 1:
-                    to_send = to_send.view(dtype=torch.uint8)
+                    to_send = to_send.reshape((-1,)).view(dtype=torch.uint8)
                 torch.cuda.synchronize()
                 self.device_send_func(to_send, self.target_rank_for_send)
 
